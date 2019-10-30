@@ -68,6 +68,8 @@ class BlockParser {
   /// turn. Order matters here.
   final List<BlockSyntax> blockSyntaxes = [];
 
+  /// Line number of the first line.
+  final int offset;
   /// Index of the current line.
   int _pos = 0;
 
@@ -97,7 +99,7 @@ class BlockParser {
     const ParagraphSyntax()
   ];
 
-  BlockParser(this.lines, this.document) {
+  BlockParser(this.lines, this.document, [this.offset=0]) {
     blockSyntaxes.addAll(document.blockSyntaxes);
     blockSyntaxes.addAll(standardBlockSyntaxes);
   }
@@ -351,7 +353,7 @@ class BlockquoteSyntax extends BlockSyntax {
     var childLines = parseChildLines(parser);
 
     // Recursively parse the contents of the blockquote.
-    var children = BlockParser(childLines, parser.document).parseLines();
+    var children = BlockParser(childLines, parser.document, parser._pos).parseLines();
 
     return Element('blockquote', children);
   }
@@ -582,8 +584,9 @@ class LongBlockHtmlSyntax extends BlockHtmlSyntax {
 class ListItem {
   bool forceBlock = false;
   final List<String> lines;
+  int offset;
 
-  ListItem(this.lines);
+  ListItem(this.lines, [this.offset=0]);
 }
 
 /// Base class for both ordered and unordered lists.
@@ -609,12 +612,17 @@ abstract class ListSyntax extends BlockSyntax {
   Node parse(BlockParser parser) {
     var items = <ListItem>[];
     var childLines = <String>[];
+    var offset = 0; //offset of the first line of [childLines]
 
     void endItem() {
       if (childLines.isNotEmpty) {
-        items.add(ListItem(childLines));
+        items.add(ListItem(childLines, offset + parser.offset));
         childLines = <String>[];
       }
+    }
+    void addChildLine(String line) {
+      if (childLines.isEmpty) offset = parser._pos;
+      childLines.add(line);
     }
 
     Match match;
@@ -638,13 +646,13 @@ abstract class ListSyntax extends BlockSyntax {
           break;
         }
         // Add a blank line to the current list item.
-        childLines.add('');
+        addChildLine('');
       } else if (indent != null && indent.length <= leadingExpandedTabLength) {
         // Strip off indent and add to current item.
         var line = parser.current
             .replaceFirst(leadingSpace, ' ' * leadingExpandedTabLength)
             .replaceFirst(indent, '');
-        childLines.add(line);
+        addChildLine(line);
       } else if (tryMatch(_hrPattern)) {
         // Horizontal rule takes precedence to a new list item.
         break;
@@ -687,7 +695,7 @@ abstract class ListSyntax extends BlockSyntax {
         }
         // End the current list item and start a new one.
         endItem();
-        childLines.add(restWhitespace + content);
+        addChildLine(restWhitespace + content);
       } else if (BlockSyntax.isAtBlockEnd(parser)) {
         // Done with the list.
         break;
@@ -700,7 +708,7 @@ abstract class ListSyntax extends BlockSyntax {
         }
 
         // Anything else is paragraph continuation text.
-        childLines.add(parser.current);
+        addChildLine(parser.current);
       }
       parser.advance();
     }
@@ -713,9 +721,36 @@ abstract class ListSyntax extends BlockSyntax {
     var anyEmptyLinesBetweenBlocks = false;
 
     for (var item in items) {
-      var itemParser = BlockParser(item.lines, parser.document);
+      bool hasCheck = false, checked;
+      if (item.lines.isNotEmpty) {
+        final m = _reCheckbox.firstMatch(item.lines[0]);
+        if (hasCheck = m != null) {
+          checked = m[1] == 'x';
+          item.lines[0] = m[2];
+        }
+      }
+
+      var itemParser = BlockParser(item.lines, parser.document, item.offset);
       var children = itemParser.parseLines();
-      itemNodes.add(Element('li', children));
+      if (hasCheck) {
+        final check = Element('input', null);
+        if (checked) check.attributes['checked'] = 'checked';
+        if (parser.document.checkable)
+          check.attributes['data-line'] = '${item.offset}';
+        else
+          check.attributes['disabled'] = 'disabled';
+        check
+          ..attributes['class'] = 'todo'
+          ..attributes['type'] = 'checkbox';
+
+        var child = children.first;
+        (child is Element && child.tag == 'p' ? child.children: children)
+        .insert(0, check);
+      }
+
+      final li = Element('li', children);
+      if (hasCheck) li.attributes['class'] = "todo";
+      itemNodes.add(li);
       anyEmptyLinesBetweenBlocks =
           anyEmptyLinesBetweenBlocks || itemParser.encounteredBlankLine;
     }
@@ -738,12 +773,12 @@ abstract class ListSyntax extends BlockSyntax {
       }
     }
 
-    if (listTag == 'ol' && startNumber != 1) {
-      return Element(listTag, itemNodes)..attributes['start'] = '$startNumber';
-    } else {
-      return Element(listTag, itemNodes);
-    }
+    final ul = Element(listTag, itemNodes);
+    if (listTag == 'ol' && startNumber != 1)
+      ul.attributes['start'] = '$startNumber';
+    return ul;
   }
+  static final _reCheckbox = RegExp(r'^\[([x ])\](\s+\S.+)$');
 
   void removeLeadingEmptyLine(ListItem item) {
     if (item.lines.isNotEmpty && _emptyPattern.hasMatch(item.lines.first)) {
