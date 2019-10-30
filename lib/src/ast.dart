@@ -2,7 +2,7 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-typedef Node Resolver(String name, [String title]);
+typedef Resolver = Node Function(String name, [String title]);
 
 /// Base class for any AST item.
 ///
@@ -35,7 +35,7 @@ class Element implements Node {
 
   /// Instantiates a [tag] Element with a single Text child.
   Element.text(this.tag, String text)
-      : children = [new Text(text)],
+      : children = [Text(text)],
         attributes = {};
 
   /// Whether this element is self-closing.
@@ -44,7 +44,9 @@ class Element implements Node {
   void accept(NodeVisitor visitor) {
     if (visitor.visitElementBefore(this)) {
       if (children != null) {
-        for (var child in children) child.accept(visitor);
+        for (var child in children) {
+          child.accept(visitor);
+        }
       }
       visitor.visitElementAfter(this);
     }

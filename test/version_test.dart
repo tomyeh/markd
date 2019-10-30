@@ -21,10 +21,10 @@ void main() {
     var pubspecFile = p.normalize(p.join(_currentDir, '..', 'pubspec.yaml'));
 
     var pubspecContent =
-        loadYaml(new File(pubspecFile).readAsStringSync()) as YamlMap;
+        loadYaml(File(pubspecFile).readAsStringSync()) as YamlMap;
 
     expect(binVersion, pubspecContent['version'],
-        reason: 'The version reported by bin/markdown.dart '
-            'should match the version in pubspec.');
+        reason: 'The version reported by bin/markdown.dart should match the '
+            'version in pubspec. Run `pub run build_runner build` to update.');
   });
 }

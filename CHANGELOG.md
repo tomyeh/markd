@@ -1,3 +1,33 @@
+## 2.1.2-dev
+
+* Dropping support for Dart 2.0.0 through 2.1.0.
+
+## 2.1.1
+
+* Fix for encoding HTML for text string that contains `<pre>`
+  ([#263](https://github.com/dart-lang/markdown/issues/263)).
+
+## 2.1.0
+
+* Improve strict spec compliance of `>` handling by always encoding as `&gt;`
+  – unless preceded by `/`.
+* Improve strict spec compliance for `blockquote` by always putting the closing
+  tag on a new line.
+* Improve strict spec compliance for `code` elements defined with "\`".
+* Properly encode `<`, `>`, and `"` as their respective HTML entities when
+  interpreted as text.
+* Improve inline code parsing when using multiple backticks.
+* Do not encode HTML in indented code blocks when `encodeHtml` is false (e.g.
+  when used in Flutter).
+
+## 2.0.3
+
+* Render element attributes in the order they were defined.
+  Aligns more closely with the strict spec definition.
+* Correctly render `&` within inline image titles.
+* Add 68 new GitHub emojis.
+* Escape HTML attribute for fenced code blocks, in the info string.
+
 ## 2.0.2
 
 * Set max SDK version to `<3.0.0`, and adjust other dependencies.
@@ -158,8 +188,8 @@
 * Fix a few bugs in inline code syntax.
 * Ignore underscores inside words (#41).
 
-[test]: https://pub.dartlang.org/packages/test
-[unittest]: https://pub.dartlang.org/packages/unittest
+[test]: https://pub.dev/packages/test
+[unittest]: https://pub.dev/packages/unittest
 
 ## 0.7.2
 

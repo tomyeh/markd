@@ -1,12 +1,17 @@
+// Copyright (c) 2019, the Dart project authors. Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// BSD-style license that can be found in the LICENSE file.
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:mirrors';
 
-import 'package:path/path.dart' as p;
-
-import 'package:html/dom.dart';
+import 'package:html/dom.dart' show Element;
 import 'package:html/parser.dart' show parseFragment;
 import 'package:markdown/markdown.dart' show markdownToHtml, ExtensionSet;
+import 'package:path/path.dart' as p;
+
+import '../test/util.dart';
 
 // Locate the "tool" directory. Use mirrors so that this works with the test
 // package, which loads this suite into an isolate.
@@ -18,20 +23,20 @@ String get toolDir =>
         .path);
 
 File getStatsFile(String prefix) =>
-    new File(p.join(toolDir, '${prefix}_stats.json'));
+    File(p.join(toolDir, '${prefix}_stats.json'));
 
 Map<String, List<CommonMarkTestCase>> loadCommonMarkSections(
     String testPrefix) {
-  var testFile = new File(p.join(toolDir, '${testPrefix}_tests.json'));
+  var testFile = File(p.join(toolDir, '${testPrefix}_tests.json'));
   var testsJson = testFile.readAsStringSync();
 
   var testArray = jsonDecode(testsJson) as List;
 
-  var sections = new Map<String, List<CommonMarkTestCase>>();
+  var sections = Map<String, List<CommonMarkTestCase>>();
 
   for (var exampleMap in testArray) {
     var exampleTest =
-        new CommonMarkTestCase.fromJson(exampleMap as Map<String, dynamic>);
+        CommonMarkTestCase.fromJson(exampleMap as Map<String, dynamic>);
 
     var sectionList =
         sections.putIfAbsent(exampleTest.section, () => <CommonMarkTestCase>[]);
@@ -44,8 +49,8 @@ Map<String, List<CommonMarkTestCase>> loadCommonMarkSections(
 
 class Config {
   static final Config commonMarkConfig =
-      new Config._('common_mark', 'http://spec.commonmark.org/0.28/', null);
-  static final Config gfmConfig = new Config._(
+      Config._('common_mark', 'http://spec.commonmark.org/0.28/', null);
+  static final Config gfmConfig = Config._(
       'gfm', 'https://github.github.com/gfm/', ExtensionSet.gitHubFlavored);
 
   final String prefix;
@@ -67,7 +72,7 @@ class CommonMarkTestCase {
       this.markdown, this.html);
 
   factory CommonMarkTestCase.fromJson(Map<String, dynamic> json) {
-    return new CommonMarkTestCase(
+    return CommonMarkTestCase(
         json['example'] as int,
         json['section'] as String,
         json['start_line'] as int,
@@ -75,62 +80,73 @@ class CommonMarkTestCase {
         json['markdown'] as String,
         json['html'] as String);
   }
+
+  @override
+  String toString() => '$section - $example';
 }
 
 enum CompareLevel { strict, loose, fail, error }
 
-CompareLevel compareResult(Config config, CommonMarkTestCase expected,
-    {bool throwOnError: false,
-    bool verboseFail: false,
-    bool verboseLooseMatch: false}) {
+class CompareResult {
+  final CompareLevel compareLevel;
+  final CommonMarkTestCase testCase;
+  final String result;
+
+  CompareResult(this.testCase, this.result, this.compareLevel);
+}
+
+CompareResult compareResult(Config config, CommonMarkTestCase testCase,
+    {bool throwOnError = false,
+    bool verboseFail = false,
+    bool verboseLooseMatch = false}) {
   String output;
   try {
     output =
-        markdownToHtml(expected.markdown, extensionSet: config.extensionSet);
+        markdownToHtml(testCase.markdown, extensionSet: config.extensionSet);
   } catch (err, stackTrace) {
     if (throwOnError) {
       rethrow;
     }
     if (verboseFail) {
-      _printVerboseFailure(config.baseUrl, 'ERROR', expected, expected.html,
-          'Thrown: $err\n$stackTrace');
+      _printVerboseFailure(
+          config.baseUrl, 'ERROR', testCase, 'Thrown: $err\n$stackTrace');
     }
 
-    return CompareLevel.error;
+    return CompareResult(testCase, null, CompareLevel.error);
   }
 
-  if (expected.html == output) {
-    return CompareLevel.strict;
+  if (testCase.html == output) {
+    return CompareResult(testCase, output, CompareLevel.strict);
   }
 
-  var expectedParsed = parseFragment(expected.html);
+  var expectedParsed = parseFragment(testCase.html);
   var actual = parseFragment(output);
 
   var looseMatch = _compareHtml(expectedParsed.children, actual.children);
 
   if (!looseMatch && verboseFail) {
-    _printVerboseFailure(config.baseUrl, 'FAIL', expected,
-        expectedParsed.outerHtml, actual.outerHtml);
+    _printVerboseFailure(config.baseUrl, 'FAIL', testCase, output);
   }
 
   if (looseMatch && verboseLooseMatch) {
-    _printVerboseFailure(
-        config.baseUrl, 'LOOSE', expected, output, actual.outerHtml);
+    _printVerboseFailure(config.baseUrl, 'LOOSE', testCase, output);
   }
 
-  return looseMatch ? CompareLevel.loose : CompareLevel.fail;
+  return CompareResult(
+      testCase, output, looseMatch ? CompareLevel.loose : CompareLevel.fail);
 }
 
-String _indent(String s) => s.splitMapJoin('\n', onNonMatch: (n) => '    $n');
+String _indent(String s) =>
+    s.splitMapJoin('\n', onNonMatch: (n) => '    ${whitespaceColor(n)}');
 
 void _printVerboseFailure(String baseUrl, String message,
-    CommonMarkTestCase test, String expected, String actual) {
-  print('$message: $baseUrl#example-${test.example} '
-      '@ ${test.section}');
+    CommonMarkTestCase testCase, String actual) {
+  print('$message: $baseUrl#example-${testCase.example} '
+      '@ ${testCase.section}');
   print('input:');
-  print(_indent(test.markdown));
+  print(_indent(testCase.markdown));
   print('expected:');
-  print(_indent(expected));
+  print(_indent(testCase.html));
   print('actual:');
   print(_indent(actual));
   print('-----------------------');
