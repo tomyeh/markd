@@ -1,5 +1,33 @@
 [![Build Status](https://travis-ci.org/dart-lang/markdown.svg?branch=master)](https://travis-ci.org/dart-lang/markdown)
 
+> A fork of [dart-markdown](https://github.com/dart-lang/markdown)
+> for easy customization of Markdown syntaxes.
+**Differences**
+
+* `LinkMapper` introduced for mapping a *logic* link to a real one, e.g., `#abc` mapped to `https://foo/abc`
+* `InlineParser.be` and `BlockParser.be` introduced for easy customization. They are used in pair if all parsing shares the same set of syntaxes.
+* `BlockParser.safeBlockParsers` introduced for not parsing HTML tags at all.
+* `Document`'s constructor introduced additional arguments, `options`, `blockParserBuilder` and `inlineParserBuilder` for easy customization.
+* `InlineSyntax.match` introduced for easy overriding.
+* `LinkSyntax` recognizes a link even if it is not balanced with parentheses.
+* `InlineSyntax`'s constructor introduces the caseSensitive argument
+* `FencedCodeBlockSyntax.getLanguageClass` introduced for generating custom CSS class
+* `TableSyntax.processCellContent` introduced for pre-processing cell's content
+
+**Resources**
+
+* [API Reference](http://www.dartdocs.org/documentation/markd/2.0.2)
+* [Git Repos](https://github.com/tomyeh/markd)
+
+**Customizations**
+
+**Who Uses**
+
+* [Quire](https://quire.io) - a simple, collaborative, multi-level task management tool.
+* [Keikai](https://keikai.io) - a sophisticated spreadsheet for big data
+
+## Introduction
+
 A portable Markdown library written in Dart. It can parse Markdown into
 HTML on both the client and server.
 
@@ -9,7 +37,7 @@ Play with it at
 ### Usage
 
 ```dart
-import 'package:markdown/markdown.dart';
+import 'package:markd/markdown.dart';
 
 void main() {
   print(markdownToHtml('Hello *Markdown*'));
@@ -45,7 +73,7 @@ The currently supported block extension syntaxes are:
 For example:
 
 ```dart
-import 'package:markdown/markdown.dart';
+import 'package:markd/markdown.dart';
 
 void main() {
   print(markdownToHtml('Hello <span class="green">Markdown</span>',
@@ -86,7 +114,7 @@ parameter. Right now there are two extension sets:
 You can create and use your own syntaxes.
 
 ```dart
-import 'package:markdown/markdown.dart';
+import 'package:markd/markdown.dart';
 
 void main() {
   var syntaxes = [new TextSyntax('nyan', sub: '~=[,,_,,]:3')];

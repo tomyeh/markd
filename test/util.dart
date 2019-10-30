@@ -9,7 +9,7 @@ import 'dart:mirrors';
 
 import 'package:expected_output/expected_output.dart';
 import 'package:io/ansi.dart' as ansi;
-import 'package:markdown/markdown.dart';
+import 'package:markd/markdown.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 

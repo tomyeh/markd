@@ -1,9 +1,9 @@
-name: markdown
+name: markd
 version: 2.1.2-dev
 
-description: A library for converting markdown to HTML.
+description: A fork of dart-lang's markdown
 author: Dart Team <misc@dartlang.org>
-homepage: https://github.com/dart-lang/markdown
+homepage: https://github.com/tomyeh/markd
 
 executables:
   markdown:

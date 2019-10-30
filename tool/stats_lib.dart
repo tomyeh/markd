@@ -8,7 +8,7 @@ import 'dart:mirrors';
 
 import 'package:html/dom.dart' show Element;
 import 'package:html/parser.dart' show parseFragment;
-import 'package:markdown/markdown.dart' show markdownToHtml, ExtensionSet;
+import 'package:markd/markdown.dart' show markdownToHtml, ExtensionSet;
 import 'package:path/path.dart' as p;
 
 import '../test/util.dart';
