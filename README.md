@@ -18,7 +18,7 @@
 
 **Resources**
 
-* [API Reference](http://www.dartdocs.org/documentation/markd/2.0.2)
+* [API Reference](http://www.dartdocs.org/documentation/markd/2.1.1+1)
 * [Git Repos](https://github.com/tomyeh/markd)
 
 **Customizations**
