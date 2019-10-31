@@ -14,6 +14,7 @@
 * `InlineSyntax`'s constructor introduces the caseSensitive argument
 * `FencedCodeBlockSyntax.getLanguageClass` introduced for generating custom CSS class
 * `TableSyntax.processCellContent` introduced for pre-processing cell's content
+& `CondensedHtmlRenderer` introduced for customizing CSS easier.
 
 **Resources**
 

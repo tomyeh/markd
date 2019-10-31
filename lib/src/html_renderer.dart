@@ -38,7 +38,7 @@ String markdownToHtml(String markdown,
 /// Renders [nodes] to HTML.
 String renderToHtml(List<Node> nodes) => HtmlRenderer().render(nodes);
 
-const _blockTags = [
+const _blockTags = {
   'blockquote',
   'h1',
   'h2',
@@ -47,22 +47,27 @@ const _blockTags = [
   'h5',
   'h6',
   'hr',
-  'li',
-  'ol',
   'p',
   'pre',
+}, _listTags = {
+  'li',
+  'ol',
   'ul',
-];
+};
 
 /// Translates a parsed AST to HTML.
-class HtmlRenderer implements NodeVisitor {
+///
+/// Unlike [HtmlRenderer], it doesn't generate linefeeds among `ul`, `li`,
+/// and `ul` tags. Thus, the caller can apply `white-space: pre-wrap`
+/// and similar styles safely.
+class CondensedHtmlRenderer implements NodeVisitor {
   StringBuffer buffer;
   Set<String> uniqueIds;
 
   final _elementStack = <Element>[];
   String _lastVisitedTag;
 
-  HtmlRenderer();
+  CondensedHtmlRenderer();
 
   String render(List<Node> nodes) {
     buffer = StringBuffer();
@@ -77,7 +82,7 @@ class HtmlRenderer implements NodeVisitor {
 
   void visitText(Text text) {
     var content = text.text;
-    if (const ['p', 'li'].contains(_lastVisitedTag)) {
+    if (const {'p', 'li'}.contains(_lastVisitedTag)) {
       var lines = LineSplitter.split(content);
       content = (content.contains('<pre>'))
           ? lines.join('\n')
@@ -93,7 +98,7 @@ class HtmlRenderer implements NodeVisitor {
 
   bool visitElementBefore(Element element) {
     // Hackish. Separate block-level elements with newlines.
-    if (buffer.isNotEmpty && _blockTags.contains(element.tag)) {
+    if (buffer.isNotEmpty && _isBlockTag(element.tag)) {
       buffer.writeln();
     }
 
@@ -115,7 +120,7 @@ class HtmlRenderer implements NodeVisitor {
       buffer.write(' />');
 
       if (element.tag == 'br') {
-        buffer.write('\n');
+        buffer.writeln();
       }
 
       return false;
@@ -131,8 +136,8 @@ class HtmlRenderer implements NodeVisitor {
 
     if (element.children != null &&
         element.children.isNotEmpty &&
-        _blockTags.contains(_lastVisitedTag) &&
-        _blockTags.contains(element.tag)) {
+        _isBlockTag(_lastVisitedTag) &&
+        _isBlockTag(element.tag)) {
       buffer.writeln();
     } else if (element.tag == 'blockquote') {
       buffer.writeln();
@@ -157,4 +162,15 @@ class HtmlRenderer implements NodeVisitor {
     uniqueIds.add(suffixedId);
     return suffixedId;
   }
+
+  bool _isBlockTag(String tag) => _blockTags.contains(tag);
+}
+
+/// Translates a parsed AST to HTML.
+class HtmlRenderer extends CondensedHtmlRenderer {
+  HtmlRenderer();
+
+  @override
+  bool _isBlockTag(String tag)
+  => _blockTags.contains(tag) || _listTags.contains(tag);
 }
