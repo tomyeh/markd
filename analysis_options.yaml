@@ -34,7 +34,7 @@ linter:
     - overridden_fields
     - package_api_docs
     - prefer_final_fields
-    - prefer_generic_function_type_aliases
+    #- prefer_generic_function_type_aliases
     #- prefer_single_quotes
     - test_types_in_equals
     - throw_in_finally

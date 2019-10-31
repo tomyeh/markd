@@ -7,6 +7,9 @@ import 'block_parser.dart';
 import 'extension_set.dart';
 import 'inline_parser.dart';
 
+typedef BlockParser _BlockParserBuilder(List<String> lines, Document document);
+typedef InlineParser _InlineParserBuilder(String text, Document document);
+
 /// Maintains the context needed to parse a Markdown document.
 class Document {
   final Map<String, LinkReference> linkReferences = <String, LinkReference>{};
@@ -20,14 +23,24 @@ class Document {
   Iterable<BlockSyntax> get blockSyntaxes => _blockSyntaxes;
   Iterable<InlineSyntax> get inlineSyntaxes => _inlineSyntaxes;
 
+  ///An application specific instance.
+  final dynamic options;
+  ///Encapsultes the instantiation of parsers for easy customization (tom)
+  final _BlockParserBuilder _blockParserBuilder;
+  final _InlineParserBuilder _inlineParserBuilder;
+
   Document(
       {Iterable<BlockSyntax> blockSyntaxes,
       Iterable<InlineSyntax> inlineSyntaxes,
       ExtensionSet extensionSet,
       this.linkResolver,
       this.imageLinkResolver,
-      this.encodeHtml = true, this.checkable = false})
-      : this.extensionSet = extensionSet ?? ExtensionSet.commonMark {
+      _BlockParserBuilder blockParserBuilder = _newBlockParser,
+      _InlineParserBuilder inlineParserBuilder = _newInlineParser,
+      this.options, this.encodeHtml = true, this.checkable = false})
+      : this.extensionSet = extensionSet ?? ExtensionSet.commonMark,
+      _blockParserBuilder = blockParserBuilder,
+      _inlineParserBuilder = inlineParserBuilder {
     this._blockSyntaxes
       ..addAll(blockSyntaxes ?? [])
       ..addAll(this.extensionSet.blockSyntaxes);
@@ -35,17 +48,27 @@ class Document {
       ..addAll(inlineSyntaxes ?? [])
       ..addAll(this.extensionSet.inlineSyntaxes);
   }
+  ///A lightweight, full-customized document.
+  Document.plain(
+      this._blockParserBuilder, this._inlineParserBuilder,
+      {this.extensionSet, this.linkResolver, this.imageLinkResolver,
+       this.options, this.encodeHtml = true, this.checkable = false});
+
+  BlockParser getBlockParser(List<String> lines)
+  => _blockParserBuilder(lines, this);
+  InlineParser getInlineParser(String text)
+  => _inlineParserBuilder(text, this);
 
   /// Parses the given [lines] of Markdown to a series of AST nodes.
   List<Node> parseLines(List<String> lines, [int offset=0]) {
-    var parser = BlockParser(lines, this)..offset = offset;
+    var parser = getBlockParser(lines)..offset = offset;
     var nodes = parser.parseLines();
     _parseInlineContent(nodes);
     return nodes;
   }
 
   /// Parses the given inline Markdown [text] to a series of AST nodes.
-  List<Node> parseInline(String text) => InlineParser(text, this).parse();
+  List<Node> parseInline(String text) => getInlineParser(text).parse();
 
   void _parseInlineContent(List<Node> nodes) {
     for (var i = 0; i < nodes.length; i++) {
@@ -61,6 +84,11 @@ class Document {
     }
   }
 }
+
+BlockParser _newBlockParser(List<String> lines, Document document)
+=> BlockParser(lines, document);
+InlineParser _newInlineParser(String text, Document document)
+=> InlineParser(text, document);
 
 /// A [link reference
 /// definition](http://spec.commonmark.org/0.28/#link-reference-definitions).

@@ -18,6 +18,7 @@ void main() {
   testFile('extensions/setext_headers_with_ids.unit',
       blockSyntaxes: [const SetextHeaderWithIdSyntax()]);
   testFile('extensions/tables.unit', blockSyntaxes: [const TableSyntax()]);
+  testFile('extensions/tables_ext.unit', blockSyntaxes: [const TableSyntax()]);
 
   // Inline syntax extensions
   testFile('extensions/emojis.unit', inlineSyntaxes: [EmojiSyntax()]);

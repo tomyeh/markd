@@ -9,9 +9,48 @@ import 'document.dart';
 import 'emojis.dart';
 import 'util.dart';
 
+///Maps an URL (specified in a reference).
+///If nothing to change, just return [url].
+///It can return null (if not a link), a [String] or a [Link].
+typedef String LinkMapper(InlineParser parser, String url);
+
+///The regular expression pattern for HTML entities.
+const String htmlEntityPattern = r'&([a-zA-Z0-9]+|#[0-9]+|#[xX][a-fA-F0-9]+);';
+
+/// Parses a link starting at [start] and end at [end] (excludive)
+///
+/// * [start] - the position of the starting `(`
+InlineLink parseInlineLink(String source, int start) { //tomyeh
+  final parser = _SimpleParser(source)..pos = start,
+        link = LinkSyntax._parseInlineLink(parser);
+  if (link != null) link.end = parser.pos + 1;
+  return link;
+}
+
+/// A simple parser
+class _SimpleParser { //tomyeh
+  /// The string of Markdown being parsed.
+  final String source;
+
+  /// The current read position.
+  int pos = 0;
+
+  _SimpleParser(this.source);
+
+  bool get isDone => pos == source.length;
+
+  void advanceBy(int length) {
+    pos += length;
+  }
+
+  int charAt(int index) => source.codeUnitAt(index);
+}
+
+const _whitespaces = <int> {$space, $lf, $cr, $ff};
+
 /// Maintains the internal state needed to parse inline span elements in
 /// Markdown.
-class InlineParser {
+class InlineParser extends _SimpleParser {
   static final List<InlineSyntax> _defaultSyntaxes =
       List<InlineSyntax>.unmodifiable(<InlineSyntax>[
     EmailAutolinkSyntax(),
@@ -47,23 +86,45 @@ class InlineParser {
     // We will add the LinkSyntax once we know about the specific link resolver.
   ]);
 
-  /// The string of Markdown being parsed.
-  final String source;
+  /// Similar to [_defaultSyntaxes], but it excludes `_` and hard-line-break,
+  /// while including `~~`
+  static final simpleSyntaxes = <InlineSyntax>[
+    AutolinkSyntax(),
+    LinkSyntax(),
+    ImageSyntax(),
+    // Allow any punctuation to be escaped.
+    EscapeSyntax(),
+    // "*" surrounded by spaces is left alone.
+    TextSyntax(r' \* '),
+    // Leave already-encoded HTML entities alone. Ensures we don't turn
+    // "&amp;" into "&amp;amp;"
+    TextSyntax(htmlEntityPattern),
+    // Encode "&".
+    TextSyntax(r'&', sub: '&amp;'),
+    // Encode "<".
+    TextSyntax(r'<', sub: '&lt;'),
+    // Encode ">". (Google calendar expects it)
+    TextSyntax(r'>', sub: '&gt;'),
+    // Parse "**strong**" tags.
+    // Parse "**strong**" and "*emphasis*" tags.
+    TagSyntax(r'\*+', requiresDelimiterRun: true),
+    StrikethroughSyntax(),
+    CodeSyntax(),
+    // We will add the LinkSyntax once we know about the specific link resolver.
+  ];
 
   /// The Markdown document this parser is parsing.
   final Document document;
 
-  final List<InlineSyntax> syntaxes = <InlineSyntax>[];
-
-  /// The current read position.
-  int pos = 0;
+  final List<InlineSyntax> syntaxes;
 
   /// Starting position of the last unconsumed text.
   int start = 0;
 
   final List<TagState> _stack;
 
-  InlineParser(this.source, this.document) : _stack = <TagState>[] {
+  InlineParser(String source, this.document) : _stack = <TagState>[], syntaxes = <InlineSyntax>[],
+  super(source) {
     // User specified syntaxes are the first syntaxes to be evaluated.
     syntaxes.addAll(document.inlineSyntaxes);
 
@@ -95,6 +156,14 @@ class InlineParser {
     ]);
   }
 
+  /// Instantiates with all syntaxes specified in [syntaxes].
+  /// It doesn't add any flavor or default syntaxes into it.
+  InlineParser.be(String source, this.document, this.syntaxes): _stack = <TagState>[],
+  super(source);
+
+  ///The options passed to [document].
+  dynamic get options => document.options;
+
   List<Node> parse() {
     // Make a fake top tag to hold the results.
     _stack.add(TagState(0, 0, null, null));
@@ -117,8 +186,6 @@ class InlineParser {
     // Unwind any unmatched tags and get the results.
     return _stack[0].close(this, null);
   }
-
-  int charAt(int index) => source.codeUnitAt(index);
 
   void writeText() {
     writeTextRange(start, pos);
@@ -148,12 +215,6 @@ class InlineParser {
   /// Push [state] onto the stack of [TagState]s.
   void openTag(TagState state) => _stack.add(state);
 
-  bool get isDone => pos == source.length;
-
-  void advanceBy(int length) {
-    pos += length;
-  }
-
   void consume(int length) {
     pos += length;
     start = pos;
@@ -164,16 +225,14 @@ class InlineParser {
 abstract class InlineSyntax {
   final RegExp pattern;
 
-  InlineSyntax(String pattern) : pattern = RegExp(pattern, multiLine: true);
+  InlineSyntax(String pattern, {bool caseSensitive = true}) : pattern = RegExp(pattern, multiLine: true, caseSensitive: caseSensitive);
 
   /// Tries to match at the parser's current position.
   ///
   /// The parser's position can be overriden with [startMatchPos].
   /// Returns whether or not the pattern successfully matched.
   bool tryMatch(InlineParser parser, [int startMatchPos]) {
-    if (startMatchPos == null) startMatchPos = parser.pos;
-
-    final startMatch = pattern.matchAsPrefix(parser.source, startMatchPos);
+    final startMatch = matches(parser, startMatchPos);
     if (startMatch == null) return false;
 
     // Write any existing plain text up to this point.
@@ -182,6 +241,10 @@ abstract class InlineSyntax {
     if (onMatch(parser, startMatch)) parser.consume(startMatch[0].length);
     return true;
   }
+
+  ///Test if this syntax matches the current source.
+  Match matches(InlineParser parser, int startMatchPos)
+  => pattern.matchAsPrefix(parser.source, startMatchPos ?? parser.pos);
 
   /// Processes [match], adding nodes to [parser] and possibly advancing
   /// [parser].
@@ -585,7 +648,7 @@ class TagSyntax extends InlineSyntax {
 
 /// Matches strikethrough syntax according to the GFM spec.
 class StrikethroughSyntax extends TagSyntax {
-  StrikethroughSyntax() : super('~+', requiresDelimiterRun: true);
+  StrikethroughSyntax([String pattern='~+']) : super(pattern, requiresDelimiterRun: true);
 
   @override
   bool onMatchEnd(InlineParser parser, Match match, TagState state) {
@@ -597,9 +660,12 @@ class StrikethroughSyntax extends TagSyntax {
       return false;
     }
 
-    parser.addNode(Element('del', state.children));
+    parser.addNode(Element(tag, state.children));
     return true;
   }
+
+  ///The generated tag
+  String get tag => 'del';
 }
 
 /// Matches links like `[blah][label]` and `[blah](url)`.
@@ -607,10 +673,14 @@ class LinkSyntax extends TagSyntax {
   static final _entirelyWhitespacePattern = RegExp(r'^\s*$');
 
   final Resolver linkResolver;
+  final LinkMapper linkMapper;
 
-  LinkSyntax({Resolver linkResolver, String pattern = r'\['})
+  LinkSyntax({Resolver linkResolver, this.linkMapper, String pattern = r'\['})
       : this.linkResolver = (linkResolver ?? (String _, [String __]) => null),
         super(pattern, end: r'\]');
+
+  String _map(InlineParser parser, String url)
+  => linkMapper == null ? url: linkMapper(parser, url);
 
   // The pending [TagState]s, all together, are "active" or "inactive" based on
   // whether a link element has just been parsed.
@@ -694,7 +764,7 @@ class LinkSyntax extends TagSyntax {
 
   /// Resolve a possible reference link.
   ///
-  /// Uses [linkReferences], [linkResolver], and [_createNode] to try to
+  /// Uses [linkReferences], [linkResolver], and [createNode] to try to
   /// resolve [label] and [state] into a [Node]. If [label] is defined in
   /// [linkReferences] or can be resolved by [linkResolver], returns a [Node]
   /// that links to the resolved URL.
@@ -702,12 +772,12 @@ class LinkSyntax extends TagSyntax {
   /// Otherwise, returns `null`.
   ///
   /// [label] does not need to be normalized.
-  Node _resolveReferenceLink(
+  Node _resolveReferenceLink(InlineParser parser,
       String label, TagState state, Map<String, LinkReference> linkReferences) {
     var normalizedLabel = label.toLowerCase();
     var linkReference = linkReferences[normalizedLabel];
     if (linkReference != null) {
-      return _createNode(state, linkReference.destination, linkReference.title);
+      return createNode(parser, state, _map(parser, linkReference.destination), linkReference.title);
     } else {
       // This link has no reference definition. But we allow users of the
       // library to specify a custom resolver function ([linkResolver]) that
@@ -725,7 +795,7 @@ class LinkSyntax extends TagSyntax {
   }
 
   /// Create the node represented by a Markdown link.
-  Node _createNode(TagState state, String destination, String title) {
+  Node createNode(InlineParser parser, TagState state, String destination, String title) {
     var element = Element('a', state.children);
     element.attributes['href'] = escapeAttribute(destination);
     if (title != null && title.isNotEmpty) {
@@ -739,7 +809,7 @@ class LinkSyntax extends TagSyntax {
   // Returns whether the link was added successfully.
   bool _tryAddReferenceLink(InlineParser parser, TagState state, String label) {
     var element =
-        _resolveReferenceLink(label, state, parser.document.linkReferences);
+        _resolveReferenceLink(parser, label, state, parser.document.linkReferences);
     if (element == null) {
       return false;
     }
@@ -753,7 +823,7 @@ class LinkSyntax extends TagSyntax {
   //
   // Returns whether the link was added successfully.
   bool _tryAddInlineLink(InlineParser parser, TagState state, InlineLink link) {
-    var element = _createNode(state, link.destination, link.title);
+    var element = createNode(parser, state, _map(parser, link.destination), link.title);
     if (element == null) return false;
     parser.addNode(element);
     parser.start = parser.pos;
@@ -810,7 +880,7 @@ class LinkSyntax extends TagSyntax {
   /// `(http://url "title")`.
   ///
   /// Returns the [InlineLink] if one was parsed, or `null` if not.
-  InlineLink _parseInlineLink(InlineParser parser) {
+  static InlineLink _parseInlineLink(_SimpleParser parser) {
     // Start walking to the character just after the opening `(`.
     parser.advanceBy(1);
 
@@ -828,7 +898,7 @@ class LinkSyntax extends TagSyntax {
   /// Parse an inline link with a bracketed destination (a destination wrapped
   /// in `<...>`). The current position of the parser must be the first
   /// character of the destination.
-  InlineLink _parseInlineBracketedLink(InlineParser parser) {
+  static InlineLink _parseInlineBracketedLink(_SimpleParser parser) {
     parser.advanceBy(1);
 
     var buffer = StringBuffer();
@@ -837,7 +907,7 @@ class LinkSyntax extends TagSyntax {
       if (char == $backslash) {
         parser.advanceBy(1);
         var next = parser.charAt(parser.pos);
-        if (char == $space || char == $lf || char == $cr || char == $ff) {
+        if (_whitespaces.contains(char)) {
           // Not a link (no whitespace allowed within `<...>`).
           return null;
         }
@@ -847,7 +917,7 @@ class LinkSyntax extends TagSyntax {
           buffer.writeCharCode(char);
         }
         buffer.writeCharCode(next);
-      } else if (char == $space || char == $lf || char == $cr || char == $ff) {
+      } else if (_whitespaces.contains(char)) {
         // Not a link (no whitespace allowed within `<...>`).
         return null;
       } else if (char == $gt) {
@@ -862,9 +932,9 @@ class LinkSyntax extends TagSyntax {
 
     parser.advanceBy(1);
     var char = parser.charAt(parser.pos);
-    if (char == $space || char == $lf || char == $cr || char == $ff) {
+    if (_whitespaces.contains(char)) {
       var title = _parseTitle(parser);
-      if (title == null && parser.charAt(parser.pos) != $rparen) {
+      if (title == null && (parser.isDone || parser.charAt(parser.pos) != $rparen)) {
         // This looked like an inline link, until we found this $space
         // followed by mystery characters; no longer a link.
         return null;
@@ -881,7 +951,7 @@ class LinkSyntax extends TagSyntax {
   /// Parse an inline link with a "bare" destination (a destination _not_
   /// wrapped in `<...>`). The current position of the parser must be the first
   /// character of the destination.
-  InlineLink _parseInlineBareDestinationLink(InlineParser parser) {
+  static InlineLink _parseInlineBareDestinationLink(_SimpleParser parser) {
     // According to
     // [CommonMark](http://spec.commonmark.org/0.28/#link-destination):
     //
@@ -955,15 +1025,12 @@ class LinkSyntax extends TagSyntax {
   }
 
   // Walk the parser forward through any whitespace.
-  void _moveThroughWhitespace(InlineParser parser) {
+  static void _moveThroughWhitespace(_SimpleParser parser) {
     while (!parser.isDone) {
       var char = parser.charAt(parser.pos);
-      if (char != $space &&
+      if (!_whitespaces.contains(char) &&
           char != $tab &&
-          char != $lf &&
-          char != $vt &&
-          char != $cr &&
-          char != $ff) {
+          char != $vt) {
         return;
       }
       parser.advanceBy(1);
@@ -973,7 +1040,7 @@ class LinkSyntax extends TagSyntax {
   // Parse a link title in [parser] at it's current position. The parser's
   // current position should be a whitespace character that followed a link
   // destination.
-  String _parseTitle(InlineParser parser) {
+  static String _parseTitle(_SimpleParser parser) {
     _moveThroughWhitespace(parser);
     if (parser.isDone) return null;
 
@@ -1022,10 +1089,10 @@ class LinkSyntax extends TagSyntax {
 /// Matches images like `![alternate text](url "optional title")` and
 /// `![alternate text][label]`.
 class ImageSyntax extends LinkSyntax {
-  ImageSyntax({Resolver linkResolver})
-      : super(linkResolver: linkResolver, pattern: r'!\[');
+  ImageSyntax({Resolver linkResolver, LinkMapper linkMapper})
+      : super(linkResolver: linkResolver, linkMapper: linkMapper, pattern: r'!\[');
 
-  Node _createNode(TagState state, String destination, String title) {
+  Node createNode(InlineParser parser, TagState state, String destination, String title) {
     var element = Element.empty('img');
     element.attributes['src'] = escapeHtml(destination);
     element.attributes['alt'] = state?.textContent ?? '';
@@ -1044,7 +1111,7 @@ class ImageSyntax extends LinkSyntax {
   // Returns whether the image was added successfully.
   bool _tryAddReferenceLink(InlineParser parser, TagState state, String label) {
     var element =
-        _resolveReferenceLink(label, state, parser.document.linkReferences);
+        _resolveReferenceLink(parser, label, state, parser.document.linkReferences);
     if (element == null) {
       return false;
     }
@@ -1233,6 +1300,7 @@ class TagState {
 class InlineLink {
   final String destination;
   final String title;
+  int end; //not used here but app can utilize it (tomyeh)
 
   InlineLink(this.destination, {this.title});
 }

@@ -2,11 +2,12 @@
 
 > A fork of [dart-markdown](https://github.com/dart-lang/markdown)
 > for easy customization of Markdown syntaxes.
+
 **Differences**
 
-* `LinkMapper` introduced for mapping a *logic* link to a real one, e.g., `#abc` mapped to `https://foo/abc`
+* `LinkMapper` introduced for mapping a *logic* link to a real one, e.g., `#abc` mapped to `https://foo/abc`.
+* `parseInlineLink` introduced for parsing URL in inline link.
 * `InlineParser.be` and `BlockParser.be` introduced for easy customization. They are used in pair if all parsing shares the same set of syntaxes.
-* `BlockParser.safeBlockParsers` introduced for not parsing HTML tags at all.
 * `Document`'s constructor introduced additional arguments, `options`, `blockParserBuilder` and `inlineParserBuilder` for easy customization.
 * `InlineSyntax.match` introduced for easy overriding.
 * `LinkSyntax` recognizes a link even if it is not balanced with parentheses.

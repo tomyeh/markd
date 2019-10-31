@@ -1,0 +1,16 @@
+>>> rows wrapped in pipes with extra space
+| head | cells |
+|------|-------|
+| body | cells | 
+| b2   |       |
+
+<<<
+<table><thead><tr><th>head</th><th>cells</th></tr></thead><tbody><tr><td>body</td><td>cells</td></tr><tr><td>b2</td><td></td></tr></tbody></table>
+>>> rows wrapped in pipes with one extra space and one reasonable space
+| head | col1  | col2 |
+|------|-------|------|
+| body | cells | 
+| body | cell1 | cell2 | 
+
+<<<
+<table><thead><tr><th>head</th><th>col1</th><th>col2</th></tr></thead><tbody><tr><td>body</td><td>cells</td><td></td></tr><tr><td>body</td><td>cell1</td><td>cell2</td></tr></tbody></table>

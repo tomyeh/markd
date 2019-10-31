@@ -66,7 +66,7 @@ class BlockParser {
   ///
   /// To turn a series of lines into blocks, each of these will be tried in
   /// turn. Order matters here.
-  final List<BlockSyntax> blockSyntaxes = [];
+  final List<BlockSyntax> blockSyntaxes;
 
   /// Line number of the first line.
   int offset;
@@ -78,7 +78,7 @@ class BlockParser {
   bool encounteredBlankLine = false;
 
   /// The collection of built-in block parsers.
-  final List<BlockSyntax> standardBlockSyntaxes = [
+  static final List<BlockSyntax> standardBlockSyntaxes = [
     const EmptyBlockSyntax(),
     const BlockTagBlockHtmlSyntax(),
     LongBlockHtmlSyntax(r'^ {0,3}<pre(?:\s|>|$)', '</pre>'),
@@ -99,10 +99,11 @@ class BlockParser {
     const ParagraphSyntax()
   ];
 
-  BlockParser(this.lines, this.document) {
+  BlockParser(this.lines, this.document) : blockSyntaxes = <BlockSyntax>[] {
     blockSyntaxes.addAll(document.blockSyntaxes);
     blockSyntaxes.addAll(standardBlockSyntaxes);
   }
+  BlockParser.be(this.lines, this.document, this.blockSyntaxes);
 
   /// Gets the current line.
   String get current => lines[_pos];
@@ -353,7 +354,7 @@ class BlockquoteSyntax extends BlockSyntax {
     var childLines = parseChildLines(parser);
 
     // Recursively parse the contents of the blockquote.
-    var itemParser = BlockParser(childLines, parser.document)..offset = parser._pos;
+    var itemParser = parser.document.getBlockParser(childLines)..offset = parser._pos;
     var children = itemParser.parseLines();
 
     return Element('blockquote', children);
@@ -449,6 +450,9 @@ class FencedCodeBlockSyntax extends BlockSyntax {
     return childLines;
   }
 
+  ///Returns the CSS class of the given [language].
+  String getLanguageClass(String language) => "language-$language";
+
   Node parse(BlockParser parser) {
     // Get the syntax identifier, if there is one.
     var match = pattern.firstMatch(parser.current);
@@ -479,7 +483,7 @@ class FencedCodeBlockSyntax extends BlockSyntax {
       if (parser.document.encodeHtml) {
         infoString = escapeHtmlAttribute(infoString);
       }
-      code.attributes['class'] = "language-$infoString";
+      code.attributes['class'] = getLanguageClass(infoString);
     }
 
     var element = Element('pre', [code]);
@@ -731,7 +735,7 @@ abstract class ListSyntax extends BlockSyntax {
         }
       }
 
-      var itemParser = BlockParser(item.lines, parser.document)..offset = item.offset;
+      var itemParser = parser.document.getBlockParser(item.lines)..offset = item.offset;
       var children = itemParser.parseLines();
       if (hasCheck) {
         final check = Element('input', null);
@@ -916,7 +920,7 @@ class TableSyntax extends BlockSyntax {
         continue;
       }
 
-      var contents = UnparsedContent(cell);
+      var contents = UnparsedContent(processCellContent(parser, cell));
       row.add(Element(cellType, [contents]));
     }
 
@@ -927,6 +931,13 @@ class TableSyntax extends BlockSyntax {
 
     return Element('tr', row);
   }
+
+  /// Processes the given cell content ([cellContent]).
+  /// It is a callback for subclasses to pre-process the cell's content
+  /// 
+  /// Default: return [cellContent]
+  String processCellContent(BlockParser parser, String cellContent)
+  => cellContent;
 }
 
 /// Parses paragraphs of regular text.
