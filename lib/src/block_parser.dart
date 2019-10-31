@@ -69,7 +69,7 @@ class BlockParser {
   final List<BlockSyntax> blockSyntaxes = [];
 
   /// Line number of the first line.
-  final int offset;
+  int offset;
   /// Index of the current line.
   int _pos = 0;
 
@@ -99,7 +99,7 @@ class BlockParser {
     const ParagraphSyntax()
   ];
 
-  BlockParser(this.lines, this.document, [this.offset=0]) {
+  BlockParser(this.lines, this.document) {
     blockSyntaxes.addAll(document.blockSyntaxes);
     blockSyntaxes.addAll(standardBlockSyntaxes);
   }
@@ -353,7 +353,8 @@ class BlockquoteSyntax extends BlockSyntax {
     var childLines = parseChildLines(parser);
 
     // Recursively parse the contents of the blockquote.
-    var children = BlockParser(childLines, parser.document, parser._pos).parseLines();
+    var itemParser = BlockParser(childLines, parser.document)..offset = parser._pos;
+    var children = itemParser.parseLines();
 
     return Element('blockquote', children);
   }
@@ -730,15 +731,16 @@ abstract class ListSyntax extends BlockSyntax {
         }
       }
 
-      var itemParser = BlockParser(item.lines, parser.document, item.offset);
+      var itemParser = BlockParser(item.lines, parser.document)..offset = item.offset;
       var children = itemParser.parseLines();
       if (hasCheck) {
         final check = Element('input', null);
         if (checked) check.attributes['checked'] = 'checked';
-        if (parser.document.checkable)
+        if (parser.document.checkable) {
           check.attributes['data-line'] = '${item.offset}';
-        else
+        } else {
           check.attributes['disabled'] = 'disabled';
+        }
         check
           ..attributes['class'] = 'todo'
           ..attributes['type'] = 'checkbox';
@@ -774,8 +776,9 @@ abstract class ListSyntax extends BlockSyntax {
     }
 
     final ul = Element(listTag, itemNodes);
-    if (listTag == 'ol' && startNumber != 1)
+    if (listTag == 'ol' && startNumber != 1) {
       ul.attributes['start'] = '$startNumber';
+    }
     return ul;
   }
   static final _reCheckbox = RegExp(r'^\[([x ])\](\s+\S.+)$');
