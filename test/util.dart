@@ -58,6 +58,7 @@ void validateCore(
   ExtensionSet extensionSet,
   bool inlineOnly = false,
   bool checkable = false,
+  bool emptyListDisabled = false,
 }) {
   test(description, () {
     var result = markdownToHtml(markdown,
@@ -66,7 +67,8 @@ void validateCore(
         extensionSet: extensionSet,
         linkResolver: linkResolver,
         imageLinkResolver: imageLinkResolver,
-        inlineOnly: inlineOnly, checkable: checkable);
+        inlineOnly: inlineOnly, checkable: checkable,
+        emptyListDisabled: emptyListDisabled);
 
     markdownPrintOnFailure(markdown, html, result);
 

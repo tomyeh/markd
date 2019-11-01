@@ -17,6 +17,12 @@ class Document {
   final Resolver linkResolver;
   final Resolver imageLinkResolver;
   final bool encodeHtml, checkable;
+  /// Whether to disable the generation of nested lists for empty content,
+  /// such as `* * A`.
+  /// If false (default), `<ul><li><ul><li>A</li></ul></li></ul>`
+  /// will be generated.
+  /// If true, `<ul><li>* A</li> wll be generated instead.
+  final bool emptyListDisabled;
   final _blockSyntaxes = Set<BlockSyntax>();
   final _inlineSyntaxes = Set<InlineSyntax>();
 
@@ -37,7 +43,8 @@ class Document {
       this.imageLinkResolver,
       _BlockParserBuilder blockParserBuilder = _newBlockParser,
       _InlineParserBuilder inlineParserBuilder = _newInlineParser,
-      this.options, this.encodeHtml = true, this.checkable = false})
+      this.options, this.encodeHtml = true, this.checkable = false,
+      this.emptyListDisabled = false})
       : this.extensionSet = extensionSet ?? ExtensionSet.commonMark,
       _blockParserBuilder = blockParserBuilder,
       _inlineParserBuilder = inlineParserBuilder {
@@ -52,7 +59,8 @@ class Document {
   Document.plain(
       this._blockParserBuilder, this._inlineParserBuilder,
       {this.extensionSet, this.linkResolver, this.imageLinkResolver,
-       this.options, this.encodeHtml = true, this.checkable = false});
+       this.options, this.encodeHtml = true, this.checkable = false,
+       this.emptyListDisabled = false});
 
   BlockParser getBlockParser(List<String> lines)
   => _blockParserBuilder(lines, this);

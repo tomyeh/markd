@@ -195,6 +195,30 @@ Others
 </ul>
 ''');
 
+  group('List item with number or asterisks (!emptyListDisabled)', () {
+    validateCore(
+        'List item with number or asterisks',
+        '''
+* A
+* 1. B
+  1. * C
+  1. [ ] * M
+* D
+''',
+        '''
+<ul>
+<li>A</li>
+<li>1. B
+<ol>
+<li>* C</li>
+<li class="todo"><input data-line="3" class="todo" type="checkbox" /> * M</li>
+</ol>
+</li>
+<li>D</li>
+</ul>
+''', emptyListDisabled: true, checkable: true);
+  });
+
   group('Corner cases', () {
     validateCore('Incorrect Links', '''
 5 Ethernet ([Music](

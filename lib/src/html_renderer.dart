@@ -18,14 +18,15 @@ String markdownToHtml(String markdown,
     ExtensionSet extensionSet,
     Resolver linkResolver,
     Resolver imageLinkResolver,
-    bool inlineOnly = false, bool checkable = false}) {
+    bool inlineOnly = false, bool checkable = false,
+    bool emptyListDisabled = false}) {
   var document = Document(
       blockSyntaxes: blockSyntaxes,
       inlineSyntaxes: inlineSyntaxes,
       extensionSet: extensionSet,
       linkResolver: linkResolver,
       imageLinkResolver: imageLinkResolver,
-      checkable: checkable);
+      checkable: checkable, emptyListDisabled: emptyListDisabled);
 
   if (inlineOnly) return renderToHtml(document.parseInline(markdown));
 

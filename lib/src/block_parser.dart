@@ -72,6 +72,8 @@ class BlockParser {
   int offset = 0;
   /// Index of the current line.
   int _pos = 0;
+  /// Whether it is invoked when parsing a list.
+  bool _inList = false;
 
   /// Whether the parser has encountered a blank line between two block-level
   /// elements.
@@ -104,6 +106,10 @@ class BlockParser {
     blockSyntaxes.addAll(standardBlockSyntaxes);
   }
   BlockParser.be(this.lines, this.document, this.blockSyntaxes);
+
+  bool _canParse(BlockSyntax syntax)
+  => !(document.emptyListDisabled && _inList && _pos == 0 && syntax is ListSyntax)
+      && syntax.canParse(this);
 
   /// Gets the current line.
   String get current => lines[_pos];
@@ -152,7 +158,7 @@ class BlockParser {
     var blocks = <Node>[];
     while (!isDone) {
       for (var syntax in blockSyntaxes) {
-        if (syntax.canParse(this)) {
+        if (_canParse(syntax)) {
           var block = syntax.parse(this);
           if (block != null) blocks.add(block);
           break;
@@ -195,7 +201,7 @@ abstract class BlockSyntax {
   /// Gets whether or not [parser]'s current line should end the previous block.
   static bool isAtBlockEnd(BlockParser parser) {
     if (parser.isDone) return true;
-    return parser.blockSyntaxes.any((s) => s.canParse(parser) && s.canEndBlock);
+    return parser.blockSyntaxes.any((s) => parser._canParse(s) && s.canEndBlock);
   }
 
   /// Generates a valid HTML anchor from the inner text of [element].
@@ -354,7 +360,9 @@ class BlockquoteSyntax extends BlockSyntax {
     var childLines = parseChildLines(parser);
 
     // Recursively parse the contents of the blockquote.
-    var itemParser = parser.document.getBlockParser(childLines)..offset = parser._pos;
+    var itemParser = parser.document.getBlockParser(childLines)
+      ..offset = parser._pos
+      .._inList = parser._inList;
     var children = itemParser.parseLines();
 
     return Element('blockquote', children);
@@ -735,7 +743,9 @@ abstract class ListSyntax extends BlockSyntax {
         }
       }
 
-      var itemParser = parser.document.getBlockParser(item.lines)..offset = item.offset;
+      var itemParser = parser.document.getBlockParser(item.lines)
+        ..offset = item.offset
+        .._inList = true;
       var children = itemParser.parseLines();
       if (hasCheck) {
         final check = Element('input', null);

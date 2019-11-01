@@ -1,6 +1,7 @@
-## 2.1.2-dev
+## 2.1.1+2
 
 * Dropping support for Dart 2.0.0 through 2.1.0.
+* Document.emptyListDisabled supported.
 
 ## 2.1.1
 
