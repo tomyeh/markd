@@ -69,7 +69,7 @@ class BlockParser {
   final List<BlockSyntax> blockSyntaxes = [];
 
   /// Line number of the first line.
-  int offset;
+  int offset = 0;
   /// Index of the current line.
   int _pos = 0;
 
@@ -781,7 +781,7 @@ abstract class ListSyntax extends BlockSyntax {
     }
     return ul;
   }
-  static final _reCheckbox = RegExp(r'^\[([x ])\](\s+\S.+)$');
+  static final _reCheckbox = RegExp(r'^\[([x ])\](\s+\S.*)$');
 
   void removeLeadingEmptyLine(ListItem item) {
     if (item.lines.isNotEmpty && _emptyPattern.hasMatch(item.lines.first)) {
