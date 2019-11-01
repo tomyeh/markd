@@ -69,7 +69,7 @@ class BlockParser {
   final List<BlockSyntax> blockSyntaxes;
 
   /// Line number of the first line.
-  int offset;
+  int offset = 0;
   /// Index of the current line.
   int _pos = 0;
 
