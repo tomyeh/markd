@@ -179,7 +179,7 @@ Others
 * [ ] Item 1
     * 1.1
 
-* [x] Item 2
+* [x] B
 ''',
         '''
 <ul>
@@ -190,7 +190,7 @@ Others
 </ul>
 </li>
 <li class="todo">
-<p><input checked="checked" disabled="disabled" class="todo" type="checkbox" /> Item 2</p>
+<p><input checked="checked" disabled="disabled" class="todo" type="checkbox" /> B</p>
 </li>
 </ul>
 ''');
