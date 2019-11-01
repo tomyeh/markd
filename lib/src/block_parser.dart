@@ -795,7 +795,7 @@ abstract class ListSyntax extends BlockSyntax {
     }
     return ul;
   }
-  static final _reCheckbox = RegExp(r'^\[([x ])\](\s+\S.+)$');
+  static final _reCheckbox = RegExp(r'^\[([x ])\](\s+\S.*)$');
 
   void removeLeadingEmptyLine(ListItem item) {
     if (item.lines.isNotEmpty && _emptyPattern.hasMatch(item.lines.first)) {
