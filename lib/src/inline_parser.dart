@@ -22,9 +22,9 @@ class InlineParser {
     // Allow any punctuation to be escaped.
     EscapeSyntax(),
     // "*" surrounded by spaces is left alone.
-    TextSyntax(r' \* '),
+    TextSyntax(r' \* ', startCharacter: $space),
     // "_" surrounded by spaces is left alone.
-    TextSyntax(r' _ '),
+    TextSyntax(r' _ ', startCharacter: $space),
     // Parse "**strong**" and "*emphasis*" tags.
     TagSyntax(r'\*+', requiresDelimiterRun: true),
     // Parse "__strong__" and "_emphasis_" tags.
@@ -37,13 +37,13 @@ class InlineParser {
       List<InlineSyntax>.unmodifiable(<InlineSyntax>[
     // Leave already-encoded HTML entities alone. Ensures we don't turn
     // "&amp;" into "&amp;amp;"
-    TextSyntax(r'&[#a-zA-Z0-9]*;'),
+    TextSyntax(r'&[#a-zA-Z0-9]*;', startCharacter: $ampersand),
     // Encode "&".
-    TextSyntax(r'&', sub: '&amp;'),
+    TextSyntax(r'&', sub: '&amp;', startCharacter: $ampersand),
     // Encode "<".
-    TextSyntax(r'<', sub: '&lt;'),
+    TextSyntax(r'<', sub: '&lt;', startCharacter: $lt),
     // Encode ">".
-    TextSyntax(r'>', sub: '&gt;'),
+    TextSyntax(r'>', sub: '&gt;', startCharacter: $gt),
     // We will add the LinkSyntax once we know about the specific link resolver.
   ]);
 
@@ -67,7 +67,7 @@ class InlineParser {
     // User specified syntaxes are the first syntaxes to be evaluated.
     syntaxes.addAll(document.inlineSyntaxes);
 
-    var documentHasCustomInlineSyntaxes = document.inlineSyntaxes
+    var hasCustomInlineSyntaxes = document.inlineSyntaxes
         .any((s) => !document.extensionSet.inlineSyntaxes.contains(s));
 
     // This first RegExp matches plain text to accelerate parsing. It's written
@@ -75,7 +75,7 @@ class InlineParser {
     // Markdown is plain text, so it's faster to match one RegExp per 'word'
     // rather than fail to match all the following RegExps at each non-syntax
     // character position.
-    if (documentHasCustomInlineSyntaxes) {
+    if (hasCustomInlineSyntaxes) {
       // We should be less aggressive in blowing past "words".
       syntaxes.add(TextSyntax(r'[A-Za-z0-9]+(?=\s)'));
     } else {
@@ -164,7 +164,17 @@ class InlineParser {
 abstract class InlineSyntax {
   final RegExp pattern;
 
-  InlineSyntax(String pattern) : pattern = RegExp(pattern, multiLine: true);
+  /// The first character of [pattern], to be used as an efficient first check
+  /// that this syntax matches the current parser position.
+  final int _startCharacter;
+
+  /// Create a new [InlineSyntax] which matches text on [pattern].
+  ///
+  /// If [startCharacter] is passed, it is used as a pre-matching check which
+  /// is faster than matching against [pattern].
+  InlineSyntax(String pattern, {int startCharacter})
+      : pattern = RegExp(pattern, multiLine: true),
+        _startCharacter = startCharacter;
 
   /// Tries to match at the parser's current position.
   ///
@@ -172,6 +182,14 @@ abstract class InlineSyntax {
   /// Returns whether or not the pattern successfully matched.
   bool tryMatch(InlineParser parser, [int startMatchPos]) {
     if (startMatchPos == null) startMatchPos = parser.pos;
+
+    // Before matching with the regular expression [pattern], which can be
+    // expensive on some platforms, check if even the first character matches
+    // this syntax.
+    if (_startCharacter != null &&
+        parser.source.codeUnitAt(startMatchPos) != _startCharacter) {
+      return false;
+    }
 
     final startMatch = pattern.matchAsPrefix(parser.source, startMatchPos);
     if (startMatch == null) return false;
@@ -205,9 +223,14 @@ class LineBreakSyntax extends InlineSyntax {
 class TextSyntax extends InlineSyntax {
   final String substitute;
 
-  TextSyntax(String pattern, {String sub})
+  /// Create a new [TextSyntax] which matches text on [pattern].
+  ///
+  /// If [sub] is passed, it is used as a simple replacement for [pattern]. If
+  /// [startCharacter] is passed, it is used as a pre-matching check which is
+  /// faster than matching against [pattern].
+  TextSyntax(String pattern, {String sub, int startCharacter})
       : substitute = sub,
-        super(pattern);
+        super(pattern, startCharacter: startCharacter);
 
   /// Adds a [Text] node to [parser] and returns `true` if there is a
   /// [substitute], as long as the preceding character (if any) is not a `/`.
@@ -262,7 +285,9 @@ class EscapeSyntax extends InlineSyntax {
 /// TODO(srawlins): improve accuracy while ensuring performance, once
 /// Markdown benchmarking is more mature.
 class InlineHtmlSyntax extends TextSyntax {
-  InlineHtmlSyntax() : super(r'<[/!?]?[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>');
+  InlineHtmlSyntax()
+      : super(r'<[/!?]?[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?>',
+            startCharacter: $lt);
 }
 
 /// Matches autolinks like `<foo@bar.example.com>`.
@@ -273,11 +298,12 @@ class EmailAutolinkSyntax extends InlineSyntax {
       r'''[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}'''
       r'''[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*''';
 
-  EmailAutolinkSyntax() : super('<($_email)>');
+  EmailAutolinkSyntax() : super('<($_email)>', startCharacter: $lt);
 
   bool onMatch(InlineParser parser, Match match) {
     var url = match[1];
-    var anchor = Element.text('a', escapeHtml(url));
+    var text = parser.document.encodeHtml ? escapeHtml(url) : url;
+    var anchor = Element.text('a', text);
     anchor.attributes['href'] = Uri.encodeFull('mailto:$url');
     parser.addNode(anchor);
 
@@ -291,7 +317,8 @@ class AutolinkSyntax extends InlineSyntax {
 
   bool onMatch(InlineParser parser, Match match) {
     var url = match[1];
-    var anchor = Element.text('a', escapeHtml(url));
+    var text = parser.document.encodeHtml ? escapeHtml(url) : url;
+    var anchor = Element.text('a', text);
     anchor.attributes['href'] = Uri.encodeFull(url);
     parser.addNode(anchor);
 
@@ -306,17 +333,21 @@ class AutolinkExtensionSyntax extends InlineSyntax {
   // Autolinks can only come at the beginning of a line, after whitespace, or
   // any of the delimiting characters *, _, ~, and (.
   static const start = r'(?:^|[\s*_~(>])';
+
   // An extended url autolink will be recognized when one of the schemes
   // http://, https://, or ftp://, followed by a valid domain
   static const scheme = r'(?:(?:https?|ftp):\/\/|www\.)';
+
   // A valid domain consists of alphanumeric characters, underscores (_),
   // hyphens (-) and periods (.). There must be at least one period, and no
   // underscores may be present in the last two segments of the domain.
   static const domainPart = r'\w\-';
   static const domain = '[$domainPart][$domainPart.]+';
+
   // A valid domain consists of alphanumeric characters, underscores (_),
   // hyphens (-) and periods (.).
   static const path = r'[^\s<]*';
+
   // Trailing punctuation (specifically, ?, !, ., ,, :, *, _, and ~) will not
   // be considered part of the autolink
   static const truncatingPunctuationPositive = r'[?!.,:*_~]';
@@ -402,7 +433,8 @@ class AutolinkExtensionSyntax extends InlineSyntax {
       href = 'http://$href';
     }
 
-    final anchor = Element.text('a', escapeHtml(url));
+    final text = parser.document.encodeHtml ? escapeHtml(url) : url;
+    final anchor = Element.text('a', text);
     anchor.attributes['href'] = Uri.encodeFull(href);
     parser.addNode(anchor);
 
@@ -422,7 +454,38 @@ class AutolinkExtensionSyntax extends InlineSyntax {
 }
 
 class _DelimiterRun {
-  static final String punctuation = r'''!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~''';
+  /// According to
+  /// [CommonMark](https://spec.commonmark.org/0.29/#punctuation-character):
+  ///
+  /// > A punctuation character is an ASCII punctuation character or anything in
+  /// > the general Unicode categories `Pc`, `Pd`, `Pe`, `Pf`, `Pi`, `Po`, or
+  /// > `Ps`.
+  // This RegExp is inspired by
+  // https://github.com/commonmark/commonmark.js/blob/1f7d09099c20d7861a674674a5a88733f55ff729/lib/inlines.js#L39.
+  // I don't know if there is any way to simplify it or maintain it.
+  static final RegExp punctuation = RegExp(r'['
+      r'''!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~'''
+      r'\xA1\xA7\xAB\xB6\xB7\xBB\xBF\u037E\u0387\u055A-\u055F\u0589\u058A\u05BE'
+      r'\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061E'
+      r'\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E'
+      r'\u0964\u0965\u0970\u0AF0\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14'
+      r'\u0F3A-\u0F3D\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB'
+      r'\u1360-\u1368\u1400\u166D\u166E\u169B\u169C\u16EB-\u16ED\u1735\u1736'
+      r'\u17D4-\u17D6\u17D8-\u17DA\u1800-\u180A\u1944\u1945\u1A1E\u1A1F'
+      r'\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E'
+      r'\u1C7F\u1CC0-\u1CC7\u1CD3\u2010-\u2027\u2030-\u2043\u2045-\u2051'
+      r'\u2053-\u205E\u207D\u207E\u208D\u208E\u2308-\u230B\u2329\u232A'
+      r'\u2768-\u2775\u27C5\u27C6\u27E6-\u27EF\u2983-\u2998\u29D8-\u29DB\u29FC'
+      r'\u29FD\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00-\u2E2E\u2E30-\u2E42'
+      r'\u3001-\u3003\u3008-\u3011\u3014-\u301F\u3030\u303D\u30A0\u30FB\uA4FE'
+      r'\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF'
+      r'\uA8F8-\uA8FA\uA8FC\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF'
+      r'\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFD3E\uFD3F\uFE10-\uFE19'
+      r'\uFE30-\uFE52\uFE54-\uFE61\uFE63\uFE68\uFE6A\uFE6B\uFF01-\uFF03'
+      r'\uFF05-\uFF0A\uFF0C-\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3B-\uFF3D\uFF3F'
+      r'\uFF5B\uFF5D\uFF5F-\uFF65'
+      ']');
+
   // TODO(srawlins): Unicode whitespace
   static final String whitespace = ' \t\r\n';
 
@@ -433,13 +496,14 @@ class _DelimiterRun {
   final bool isPrecededByPunctuation;
   final bool isFollowedByPunctuation;
 
-  _DelimiterRun._(
-      {this.char,
-      this.length,
-      this.isLeftFlanking,
-      this.isRightFlanking,
-      this.isPrecededByPunctuation,
-      this.isFollowedByPunctuation});
+  _DelimiterRun._({
+    this.char,
+    this.length,
+    this.isLeftFlanking,
+    this.isRightFlanking,
+    this.isPrecededByPunctuation,
+    this.isFollowedByPunctuation,
+  });
 
   static _DelimiterRun tryParse(InlineParser parser, int runStart, int runEnd) {
     bool leftFlanking,
@@ -453,7 +517,7 @@ class _DelimiterRun {
     } else {
       preceding = parser.source.substring(runStart - 1, runStart);
     }
-    precededByPunctuation = punctuation.contains(preceding);
+    precededByPunctuation = punctuation.hasMatch(preceding);
 
     if (runEnd == parser.source.length - 1) {
       leftFlanking = false;
@@ -461,7 +525,7 @@ class _DelimiterRun {
     } else {
       following = parser.source.substring(runEnd + 1, runEnd + 2);
     }
-    followedByPunctuation = punctuation.contains(following);
+    followedByPunctuation = punctuation.hasMatch(following);
 
     // http://spec.commonmark.org/0.28/#left-flanking-delimiter-run
     if (whitespace.contains(following)) {
@@ -487,12 +551,13 @@ class _DelimiterRun {
     }
 
     return _DelimiterRun._(
-        char: parser.charAt(runStart),
-        length: runEnd - runStart + 1,
-        isLeftFlanking: leftFlanking,
-        isRightFlanking: rightFlanking,
-        isPrecededByPunctuation: precededByPunctuation,
-        isFollowedByPunctuation: followedByPunctuation);
+      char: parser.charAt(runStart),
+      length: runEnd - runStart + 1,
+      isLeftFlanking: leftFlanking,
+      isRightFlanking: rightFlanking,
+      isPrecededByPunctuation: precededByPunctuation,
+      isFollowedByPunctuation: followedByPunctuation,
+    );
   }
 
   String toString() =>
@@ -521,9 +586,17 @@ class TagSyntax extends InlineSyntax {
   /// [emphasis delimiters]: http://spec.commonmark.org/0.28/#can-open-emphasis
   final bool requiresDelimiterRun;
 
-  TagSyntax(String pattern, {String end, this.requiresDelimiterRun = false})
+  /// Create a new [TagSyntax] which matches text on [pattern].
+  ///
+  /// If [end] is passed, it is used as the pattern which denotes the end of
+  /// matching text. Otherwise, [pattern] is used. If [requiresDelimiterRun] is
+  /// passed, this syntax parses according to the same nesting rules as
+  /// emphasis delimiters.  If [startCharacter] is passed, it is used as a
+  /// pre-matching check which is faster than matching against [pattern].
+  TagSyntax(String pattern,
+      {String end, this.requiresDelimiterRun = false, int startCharacter})
       : endPattern = RegExp((end != null) ? end : pattern, multiLine: true),
-        super(pattern);
+        super(pattern, startCharacter: startCharacter);
 
   bool onMatch(InlineParser parser, Match match) {
     var runLength = match.group(0).length;
@@ -608,9 +681,12 @@ class LinkSyntax extends TagSyntax {
 
   final Resolver linkResolver;
 
-  LinkSyntax({Resolver linkResolver, String pattern = r'\['})
+  LinkSyntax(
+      {Resolver linkResolver,
+      String pattern = r'\[',
+      int startCharacter = $lbracket})
       : this.linkResolver = (linkResolver ?? (String _, [String __]) => null),
-        super(pattern, end: r'\]');
+        super(pattern, end: r'\]', startCharacter: startCharacter);
 
   // The pending [TagState]s, all together, are "active" or "inactive" based on
   // whether a link element has just been parsed.
@@ -703,7 +779,10 @@ class LinkSyntax extends TagSyntax {
   ///
   /// [label] does not need to be normalized.
   Node _resolveReferenceLink(
-      String label, TagState state, Map<String, LinkReference> linkReferences) {
+    String label,
+    TagState state,
+    Map<String, LinkReference> linkReferences,
+  ) {
     var normalizedLabel = label.toLowerCase();
     var linkReference = linkReferences[normalizedLabel];
     if (linkReference != null) {
@@ -1023,11 +1102,14 @@ class LinkSyntax extends TagSyntax {
 /// `![alternate text][label]`.
 class ImageSyntax extends LinkSyntax {
   ImageSyntax({Resolver linkResolver})
-      : super(linkResolver: linkResolver, pattern: r'!\[');
+      : super(
+            linkResolver: linkResolver,
+            pattern: r'!\[',
+            startCharacter: $exclamation);
 
   Node _createNode(TagState state, String destination, String title) {
     var element = Element.empty('img');
-    element.attributes['src'] = escapeHtml(destination);
+    element.attributes['src'] = destination;
     element.attributes['alt'] = state?.textContent ?? '';
     if (title != null && title.isNotEmpty) {
       element.attributes['title'] =

@@ -138,13 +138,13 @@ class BlockParser {
   /// Gets whether or not the current line matches the given pattern.
   bool matches(RegExp regex) {
     if (isDone) return false;
-    return regex.firstMatch(current) != null;
+    return regex.hasMatch(current);
   }
 
   /// Gets whether or not the next line matches the given pattern.
   bool matchesNext(RegExp regex) {
     if (next == null) return false;
-    return regex.firstMatch(next) != null;
+    return regex.hasMatch(next);
   }
 
   List<Node> parseLines() {
@@ -172,7 +172,7 @@ abstract class BlockSyntax {
   bool get canEndBlock => true;
 
   bool canParse(BlockParser parser) {
-    return pattern.firstMatch(parser.current) != null;
+    return pattern.hasMatch(parser.current);
   }
 
   Node parse(BlockParser parser);
@@ -400,9 +400,10 @@ class CodeBlockSyntax extends BlockSyntax {
     // The Markdown tests expect a trailing newline.
     childLines.add('');
 
-    var content = parser.document.encodeHtml
-        ? escapeHtml(childLines.join('\n'))
-        : childLines.join('\n');
+    var content = childLines.join('\n');
+    if (parser.document.encodeHtml) {
+      content = escapeHtml(content);
+    }
 
     return Element('pre', [Element.text('code', content)]);
   }
@@ -519,12 +520,24 @@ class BlockTagBlockHtmlSyntax extends BlockHtmlSyntax {
       r'figcaption|figure|footer|form|frame|frameset|h1|head|header|hr|html|'
       r'iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|'
       r'option|p|param|section|source|summary|table|tbody|td|tfoot|th|thead|'
-      'title|tr|track|ul)'
+      r'title|tr|track|ul)'
       r'(?:\s|>|/>|$)');
+
+  /// The [_pattern] regular expression above is very expensive, even on
+  /// paragraphs of Markdown with no HTML. This regular expression can be used
+  /// first as a basic check that the input might possibly be an HTML block
+  /// tag, which occur very rarely in typical Markdown.
+  static final _openBracketPattern = RegExp(r'^ {0,3}<');
 
   RegExp get pattern => _pattern;
 
   const BlockTagBlockHtmlSyntax();
+
+  @override
+  bool canParse(BlockParser parser) {
+    if (!_openBracketPattern.hasMatch(parser.current)) return false;
+    return super.canParse(parser);
+  }
 
   Node parse(BlockParser parser) {
     var childLines = <String>[];
@@ -642,7 +655,7 @@ abstract class ListSyntax extends BlockSyntax {
       var leadingSpace = _whitespaceRe.matchAsPrefix(parser.current).group(0);
       var leadingExpandedTabLength = _expandedTabLength(leadingSpace);
       if (tryMatch(_emptyPattern)) {
-        if (_emptyPattern.firstMatch(parser.next ?? '') != null) {
+        if (_emptyPattern.hasMatch(parser.next ?? '')) {
           // Two blank lines ends a list.
           break;
         }
@@ -818,6 +831,7 @@ abstract class ListSyntax extends BlockSyntax {
 /// Parses unordered lists.
 class UnorderedListSyntax extends ListSyntax {
   RegExp get pattern => _ulPattern;
+
   String get listTag => 'ul';
 
   const UnorderedListSyntax();
@@ -826,6 +840,7 @@ class UnorderedListSyntax extends ListSyntax {
 /// Parses ordered lists.
 class OrderedListSyntax extends ListSyntax {
   RegExp get pattern => _olPattern;
+
   String get listTag => 'ol';
 
   const OrderedListSyntax();
