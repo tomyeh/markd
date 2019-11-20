@@ -27,6 +27,7 @@ class Document {
   final _inlineSyntaxes = Set<InlineSyntax>();
 
   Iterable<BlockSyntax> get blockSyntaxes => _blockSyntaxes;
+
   Iterable<InlineSyntax> get inlineSyntaxes => _inlineSyntaxes;
 
   ///An application specific instance.
@@ -35,17 +36,19 @@ class Document {
   final _BlockParserBuilder _blockParserBuilder;
   final _InlineParserBuilder _inlineParserBuilder;
 
-  Document(
-      {Iterable<BlockSyntax> blockSyntaxes,
-      Iterable<InlineSyntax> inlineSyntaxes,
-      ExtensionSet extensionSet,
-      this.linkResolver,
-      this.imageLinkResolver,
-      _BlockParserBuilder blockParserBuilder = _newBlockParser,
-      _InlineParserBuilder inlineParserBuilder = _newInlineParser,
-      this.options, this.encodeHtml = true, this.checkable = false,
-      this.emptyListDisabled = false})
-      : this.extensionSet = extensionSet ?? ExtensionSet.commonMark,
+  Document({
+    Iterable<BlockSyntax> blockSyntaxes,
+    Iterable<InlineSyntax> inlineSyntaxes,
+    ExtensionSet extensionSet,
+    this.linkResolver,
+    this.imageLinkResolver,
+    _BlockParserBuilder blockParserBuilder = _newBlockParser,
+    _InlineParserBuilder inlineParserBuilder = _newInlineParser,
+    this.options,
+    this.encodeHtml = true,
+    this.checkable = false,
+    this.emptyListDisabled = false
+  }) : this.extensionSet = extensionSet ?? ExtensionSet.commonMark,
       _blockParserBuilder = blockParserBuilder,
       _inlineParserBuilder = inlineParserBuilder {
     this._blockSyntaxes

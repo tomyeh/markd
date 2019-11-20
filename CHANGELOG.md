@@ -1,5 +1,13 @@
-## 2.1.1+4
+## 2.1.2
 
+* Drop support for Dart 2.0.0 through 2.1.0.
+* Recognize Unicode ellipsis (…) and other Unicode punctuation as punctuation
+  when parsing potential emphasis.
+* Reduce time to parse a large HTML-block-free Markdown document (such as that
+  in #271) by more than half.
+* Add a new optional parameter for InlineSyntax(), `startCharacter`, where a
+  subclass can specify a single character to try to match, before matching with
+  more expensive regular expressions.
 * CondensedHtmlRenderer won't put linebreak between `li` and any other tags.
 
 ## 2.1.1+3
