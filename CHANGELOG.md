@@ -1,3 +1,7 @@
+## 2.1.1+4
+
+* CondensedHtmlRenderer won't put linebreak between `li` and any other tags.
+
 ## 2.1.1+3
 
 * Dropping support for Dart 2.0.0 through 2.1.0.

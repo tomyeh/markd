@@ -99,7 +99,7 @@ class CondensedHtmlRenderer implements NodeVisitor {
 
   bool visitElementBefore(Element element) {
     // Hackish. Separate block-level elements with newlines.
-    if (buffer.isNotEmpty && _isBlockTag(element.tag)) {
+    if (buffer.isNotEmpty && _shallBreakBefore(element.tag)) {
       buffer.writeln();
     }
 
@@ -165,6 +165,10 @@ class CondensedHtmlRenderer implements NodeVisitor {
   }
 
   bool _isBlockTag(String tag) => _blockTags.contains(tag);
+  /// Whether there shall be line-break before rendering [tag]
+  /// Default: we don't break between 'li' and other tags.
+  bool _shallBreakBefore(String tag)
+  => _isBlockTag(tag) && _lastVisitedTag != 'li';
 }
 
 /// Translates a parsed AST to HTML.
@@ -174,4 +178,6 @@ class HtmlRenderer extends CondensedHtmlRenderer {
   @override
   bool _isBlockTag(String tag)
   => _blockTags.contains(tag) || _listTags.contains(tag);
+  @override
+  bool _shallBreakBefore(String tag) => _isBlockTag(tag);
 }
