@@ -2,7 +2,6 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'dart:collection';
 import 'dart:convert';
 
 import 'ast.dart';
@@ -70,7 +69,7 @@ class HtmlRenderer implements NodeVisitor {
 
   String render(List<Node> nodes) {
     buffer = StringBuffer();
-    uniqueIds = LinkedHashSet<String>();
+    uniqueIds = <String>{};
 
     for (final node in nodes) {
       node.accept(this);
@@ -79,6 +78,7 @@ class HtmlRenderer implements NodeVisitor {
     return buffer.toString();
   }
 
+  @override
   void visitText(Text text) {
     var content = text.text;
     if (const ['p', 'li'].contains(_lastVisitedTag)) {
@@ -95,6 +95,7 @@ class HtmlRenderer implements NodeVisitor {
     _lastVisitedTag = null;
   }
 
+  @override
   bool visitElementBefore(Element element) {
     // Hackish. Separate block-level elements with newlines.
     if (buffer.isNotEmpty && _blockTags.contains(element.tag)) {
@@ -130,6 +131,7 @@ class HtmlRenderer implements NodeVisitor {
     }
   }
 
+  @override
   void visitElementAfter(Element element) {
     assert(identical(_elementStack.last, element));
 
