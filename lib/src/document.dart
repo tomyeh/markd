@@ -23,8 +23,8 @@ class Document {
   /// will be generated.
   /// If true, `<ul><li>* A</li> wll be generated instead.
   final bool emptyListDisabled;
-  final _blockSyntaxes = Set<BlockSyntax>();
-  final _inlineSyntaxes = Set<InlineSyntax>();
+  final _blockSyntaxes = <BlockSyntax>{};
+  final _inlineSyntaxes = <InlineSyntax>{};
 
   Iterable<BlockSyntax> get blockSyntaxes => _blockSyntaxes;
 
@@ -48,13 +48,13 @@ class Document {
     this.encodeHtml = true,
     this.checkable = false,
     this.emptyListDisabled = false
-  }) : this.extensionSet = extensionSet ?? ExtensionSet.commonMark,
+  }) : extensionSet = extensionSet ?? ExtensionSet.commonMark,
       _blockParserBuilder = blockParserBuilder,
       _inlineParserBuilder = inlineParserBuilder {
-    this._blockSyntaxes
+    _blockSyntaxes
       ..addAll(blockSyntaxes ?? [])
       ..addAll(this.extensionSet.blockSyntaxes);
-    this._inlineSyntaxes
+    _inlineSyntaxes
       ..addAll(inlineSyntaxes ?? [])
       ..addAll(this.extensionSet.inlineSyntaxes);
   }

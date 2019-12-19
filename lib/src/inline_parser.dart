@@ -147,7 +147,7 @@ class InlineParser extends _SimpleParser {
 
     syntaxes.addAll(_defaultSyntaxes);
 
-    if (this.document.encodeHtml) {
+    if (document.encodeHtml) {
       syntaxes.addAll(_htmlSyntaxes);
     }
 
@@ -244,7 +244,7 @@ abstract class InlineSyntax {
   /// The parser's position can be overriden with [startMatchPos].
   /// Returns whether or not the pattern successfully matched.
   bool tryMatch(InlineParser parser, [int startMatchPos]) {
-    if (startMatchPos == null) startMatchPos = parser.pos;
+    startMatchPos ??= parser.pos;
 
     // Before matching with the regular expression [pattern], which can be
     // expensive on some platforms, check if even the first character matches
@@ -280,6 +280,7 @@ class LineBreakSyntax extends InlineSyntax {
   LineBreakSyntax() : super(r'(?:\\|  +)\n');
 
   /// Create a void <br> element.
+  @override
   bool onMatch(InlineParser parser, Match match) {
     parser.addNode(Element.empty('br'));
     return true;
@@ -304,6 +305,7 @@ class TextSyntax extends InlineSyntax {
   ///
   /// Otherwise, the parser is advanced by the length of [match] and `false` is
   /// returned.
+  @override
   bool onMatch(InlineParser parser, Match match) {
     if (substitute == null ||
         (match.start > 0 &&
@@ -323,6 +325,7 @@ class TextSyntax extends InlineSyntax {
 class EscapeSyntax extends InlineSyntax {
   EscapeSyntax() : super(r'''\\[!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]''');
 
+  @override
   bool onMatch(InlineParser parser, Match match) {
     final char = match[0].codeUnitAt(1);
     // Insert the substitution. Why these three charactes are replaced with
@@ -367,6 +370,7 @@ class EmailAutolinkSyntax extends InlineSyntax {
 
   EmailAutolinkSyntax() : super('<($_email)>', startCharacter: $lt);
 
+  @override
   bool onMatch(InlineParser parser, Match match) {
     var url = match[1];
     var text = parser.document.encodeHtml ? escapeHtml(url) : url;
@@ -382,6 +386,7 @@ class EmailAutolinkSyntax extends InlineSyntax {
 class AutolinkSyntax extends InlineSyntax {
   AutolinkSyntax() : super(r'<(([a-zA-Z][a-zA-Z\-\+\.]+):(?://)?[^\s>]*)>');
 
+  @override
   bool onMatch(InlineParser parser, Match match) {
     var url = match[1];
     var text = parser.document.encodeHtml ? escapeHtml(url) : url;
@@ -419,8 +424,7 @@ class AutolinkExtensionSyntax extends InlineSyntax {
   // be considered part of the autolink
   static const truncatingPunctuationPositive = r'[?!.,:*_~]';
 
-  static final regExpTrailingPunc =
-      RegExp('$truncatingPunctuationPositive*' + r'$');
+  static final regExpTrailingPunc = RegExp('$truncatingPunctuationPositive*\$');
   static final regExpEndsWithColon = RegExp(r'\&[a-zA-Z0-9]+;$');
   static final regExpWhiteSpace = RegExp(r'\s');
 
@@ -627,6 +631,7 @@ class _DelimiterRun {
     );
   }
 
+  @override
   String toString() =>
       '<char: $char, length: $length, isLeftFlanking: $isLeftFlanking, '
       'isRightFlanking: $isRightFlanking>';
@@ -665,6 +670,7 @@ class TagSyntax extends InlineSyntax {
       : endPattern = RegExp((end != null) ? end : pattern, multiLine: true),
         super(pattern, startCharacter: startCharacter);
 
+  @override
   bool onMatch(InlineParser parser, Match match) {
     var runLength = match.group(0).length;
     var matchStart = parser.pos;
@@ -757,7 +763,7 @@ class LinkSyntax extends TagSyntax {
       this.linkMapper,
       String pattern = r'\[',
       int startCharacter = $lbracket})
-      : this.linkResolver = (linkResolver ?? (String _, [String __]) => null),
+      : linkResolver = (linkResolver ?? (String _, [String __]) => null),
         super(pattern, end: r'\]', startCharacter: startCharacter);
 
   String _map(InlineParser parser, String url)
@@ -777,6 +783,7 @@ class LinkSyntax extends TagSyntax {
   // the one, in this case).
   var _pendingStatesAreActive = true;
 
+  @override
   bool onMatch(InlineParser parser, Match match) {
     var matched = super.onMatch(parser, match);
     if (!matched) return false;
@@ -786,6 +793,7 @@ class LinkSyntax extends TagSyntax {
     return true;
   }
 
+  @override
   bool onMatchEnd(InlineParser parser, Match match, TagState state) {
     if (!_pendingStatesAreActive) return false;
 
@@ -1181,6 +1189,7 @@ class ImageSyntax extends LinkSyntax {
             pattern: r'!\[',
             startCharacter: $exclamation);
 
+  @override
   Node createNode(InlineParser parser, TagState state, String destination, String title) {
     var element = Element.empty('img');
     element.attributes['src'] = destination;
@@ -1198,6 +1207,7 @@ class ImageSyntax extends LinkSyntax {
   // Otherwise, it is treated as an inline image.
   //
   // Returns whether the image was added successfully.
+  @override
   bool _tryAddReferenceLink(InlineParser parser, TagState state, String label) {
     var element =
         _resolveReferenceLink(parser, label, state, parser.document.linkReferences);
@@ -1226,6 +1236,7 @@ class CodeSyntax extends InlineSyntax {
 
   CodeSyntax() : super(_pattern);
 
+  @override
   bool tryMatch(InlineParser parser, [int startMatchPos]) {
     if (parser.pos > 0 && parser.charAt(parser.pos - 1) == $backquote) {
       // Not really a match! We can't just sneak past one backtick to try the
@@ -1245,6 +1256,7 @@ class CodeSyntax extends InlineSyntax {
     return true;
   }
 
+  @override
   bool onMatch(InlineParser parser, Match match) {
     var code = match[2].trim().replaceAll('\n', ' ');
     if (parser.document.encodeHtml) code = escapeHtml(code);
@@ -1264,6 +1276,7 @@ class EmojiSyntax extends InlineSyntax {
   // underscores, but GitHub also supports `:+1:` and `:-1:`.
   EmojiSyntax() : super(':([a-z0-9_+-]+):');
 
+  @override
   bool onMatch(InlineParser parser, Match match) {
     var alias = match[1];
     var emoji = emojis[alias];
