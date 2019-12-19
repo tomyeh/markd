@@ -95,7 +95,9 @@ class InlineParser extends _SimpleParser {
     // Allow any punctuation to be escaped.
     EscapeSyntax(),
     // "*" surrounded by spaces is left alone.
-    TextSyntax(r' \* '),
+    TextSyntax(r' \* ', startCharacter: $space),
+    // "~" surrounded by spaces is left alone.
+    TextSyntax(r' ~ ', startCharacter: $space),
     // Leave already-encoded HTML entities alone. Ensures we don't turn
     // "&amp;" into "&amp;amp;"
     TextSyntax(htmlEntityPattern),
