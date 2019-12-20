@@ -524,7 +524,7 @@ class AutolinkExtensionSyntax extends InlineSyntax {
   }
 }
 
-class _DelimiterRun {
+class DelimiterRun {
   /// According to
   /// [CommonMark](https://spec.commonmark.org/0.29/#punctuation-character):
   ///
@@ -567,7 +567,7 @@ class _DelimiterRun {
   final bool isPrecededByPunctuation;
   final bool isFollowedByPunctuation;
 
-  _DelimiterRun._({
+  DelimiterRun._({
     this.char,
     this.length,
     this.isLeftFlanking,
@@ -576,7 +576,7 @@ class _DelimiterRun {
     this.isFollowedByPunctuation,
   });
 
-  static _DelimiterRun tryParse(InlineParser parser, int runStart, int runEnd) {
+  static DelimiterRun tryParse(String source, int runStart, int runEnd) {
     bool leftFlanking,
         rightFlanking,
         precededByPunctuation,
@@ -586,15 +586,15 @@ class _DelimiterRun {
       rightFlanking = false;
       preceding = '\n';
     } else {
-      preceding = parser.source.substring(runStart - 1, runStart);
+      preceding = source.substring(runStart - 1, runStart);
     }
     precededByPunctuation = punctuation.hasMatch(preceding);
 
-    if (runEnd == parser.source.length - 1) {
+    if (runEnd == source.length - 1) {
       leftFlanking = false;
       following = '\n';
     } else {
-      following = parser.source.substring(runEnd + 1, runEnd + 2);
+      following = source.substring(runEnd + 1, runEnd + 2);
     }
     followedByPunctuation = punctuation.hasMatch(following);
 
@@ -621,8 +621,8 @@ class _DelimiterRun {
       return null;
     }
 
-    return _DelimiterRun._(
-      char: parser.charAt(runStart),
+    return DelimiterRun._(
+      char: source.codeUnitAt(runStart),
       length: runEnd - runStart + 1,
       isLeftFlanking: leftFlanking,
       isRightFlanking: rightFlanking,
@@ -680,7 +680,7 @@ class TagSyntax extends InlineSyntax {
       return true;
     }
 
-    var delimiterRun = _DelimiterRun.tryParse(parser, matchStart, matchEnd);
+    var delimiterRun = DelimiterRun.tryParse(parser.source, matchStart, matchEnd);
     if (delimiterRun != null && delimiterRun.canOpen) {
       parser.openTag(TagState(parser.pos, matchEnd + 1, this, delimiterRun));
       return true;
@@ -695,7 +695,7 @@ class TagSyntax extends InlineSyntax {
     var matchStart = parser.pos;
     var matchEnd = parser.pos + runLength - 1;
     var openingRunLength = state.endPos - state.startPos;
-    var delimiterRun = _DelimiterRun.tryParse(parser, matchStart, matchEnd);
+    var delimiterRun = DelimiterRun.tryParse(parser.source, matchStart, matchEnd);
 
     if (openingRunLength == 1 && runLength == 1) {
       parser.addNode(Element('em', state.children));
@@ -738,7 +738,7 @@ class StrikethroughSyntax extends TagSyntax {
     var runLength = match.group(0).length;
     var matchStart = parser.pos;
     var matchEnd = parser.pos + runLength - 1;
-    var delimiterRun = _DelimiterRun.tryParse(parser, matchStart, matchEnd);
+    var delimiterRun = DelimiterRun.tryParse(parser.source, matchStart, matchEnd);
     if (!delimiterRun.isRightFlanking) {
       return false;
     }
@@ -1306,7 +1306,7 @@ class TagState {
   /// The children of this node. Will be `null` for text nodes.
   final List<Node> children;
 
-  final _DelimiterRun openingDelimiterRun;
+  final DelimiterRun openingDelimiterRun;
 
   TagState(this.startPos, this.endPos, this.syntax, this.openingDelimiterRun)
       : children = <Node>[];
@@ -1331,7 +1331,7 @@ class TagState {
     var closingMatchStart = parser.pos;
     var closingMatchEnd = parser.pos + runLength - 1;
     var closingDelimiterRun =
-        _DelimiterRun.tryParse(parser, closingMatchStart, closingMatchEnd);
+        DelimiterRun.tryParse(parser.source, closingMatchStart, closingMatchEnd);
     if (closingDelimiterRun != null && closingDelimiterRun.canClose) {
       // Emphasis rules #9 and #10:
       var oneRunOpensAndCloses =

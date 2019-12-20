@@ -1,7 +1,8 @@
-## 2.1.3
+## 2.1.3+2
 
 * Do not encode HTML in link URLs. Also do not encode HTML in link text when
   `encodeHtml` is false (e.g. when used in Flutter).
+* Rename `_DelimiterRun` to `DelimiterRun` for accessibility.
 
 ## 2.1.2
 
