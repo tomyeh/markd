@@ -1,3 +1,7 @@
+## 2.1.3+5
+
+* `TextRenderer` added to render parsed markdown into plain text.
+
 ## 2.1.3+2
 
 * Do not encode HTML in link URLs. Also do not encode HTML in link text when
