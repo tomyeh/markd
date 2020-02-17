@@ -962,12 +962,16 @@ class TableSyntax extends BlockSyntax {
     }).toList();
   }
 
+  /// Splits the given [line] into a list of cells.
+  List<String> splitRow(String line)
+  => line.split(_pipePattern);
+
   Element parseRow(
       BlockParser parser, List<String> alignments, String cellType) {
     var line = parser.current
         .replaceFirst(_openingPipe, '')
         .replaceFirst(_closingPipe, '');
-    var cells = line.split(_pipePattern);
+    var cells = splitRow(line);
     parser.advance();
     var row = <Element>[];
     String preCell;

@@ -1,3 +1,7 @@
+## 2.1.3+6
+
+* `TableSyntax.splitRow` added for customizing the splitting of cells
+
 ## 2.1.3+5
 
 * `TextRenderer` added to render parsed markdown into plain text.
