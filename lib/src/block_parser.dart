@@ -777,11 +777,12 @@ abstract class ListSyntax extends BlockSyntax {
     var anyEmptyLinesBetweenBlocks = false;
 
     for (var item in items) {
-      bool hasCheck = false, checked;
+      bool hasCheck = false, checked, uppercase;
       if (item.lines.isNotEmpty) {
         final m = _reCheckbox.firstMatch(item.lines[0]);
         if (hasCheck = m != null) {
-          checked = m[1] == 'x';
+          checked = m[1] == 'x' || m[1] == 'X';
+          uppercase = m[1] == 'X';
           item.lines[0] = m[2];
         }
       }
@@ -793,6 +794,7 @@ abstract class ListSyntax extends BlockSyntax {
       if (hasCheck) {
         final check = Element('input', null);
         if (checked) check.attributes['checked'] = 'checked';
+        if (uppercase) check.attributes['uppercase'] = 'uppercase';
         if (parser.document.checkable) {
           check.attributes['data-line'] = '${item.offset}';
         } else {
@@ -838,7 +840,8 @@ abstract class ListSyntax extends BlockSyntax {
     }
     return ul;
   }
-  static final _reCheckbox = RegExp(r'^\[([x ])\](\s+\S.*)$');
+
+  static final _reCheckbox = RegExp(r'^\[([xX ])\](\s+\S.*)$');
 
   void removeLeadingEmptyLine(ListItem item) {
     if (item.lines.isNotEmpty && _emptyPattern.hasMatch(item.lines.first)) {
