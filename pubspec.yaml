@@ -1,9 +1,10 @@
 name: markd
-version: 7.2.1+1
+version: 7.2.2
 
 description: >-
-  A fork of dart-lang's markdown
+  A fork of dart-lang's markdown at https://github.com/dart-lang/markdown
 repository: https://github.com/tomyeh/markd
+
 topics:
  - markdown
 
