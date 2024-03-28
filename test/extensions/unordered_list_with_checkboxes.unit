@@ -72,10 +72,10 @@
 <<<
 <ul class="contains-task-list">
 <li class="task-list-item">
-<p><input type="checkbox"></input>A</p>
+<p><input type="checkbox" data-line="0"></input>A</p>
 </li>
 <li class="task-list-item">
-<p><input type="checkbox"></input>B</p>
+<p><input type="checkbox" data-line="2"></input>B</p>
 </li>
 <li>
 <p>[ ]</p>
