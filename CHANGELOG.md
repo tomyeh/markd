@@ -1,3 +1,7 @@
+## 7.2.3
+
+* `parseInlineSyntax': add record type annotation to the return value
+
 ## 7.2.2
 
 * Fix a crash parsing alert block syntax (#584).

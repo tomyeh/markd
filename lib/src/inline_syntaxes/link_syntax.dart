@@ -22,11 +22,11 @@ typedef LinkMapper = String Function(InlineParser parser, String url);
 /// markdown's link.
 /// For example, to parse the link in `[foo](link "title")`, pass [start]
 /// at `(`.
-(InlineLink link, int end)? parseInlineLink(
+({InlineLink link, int end})? parseInlineLink(
       String source, int start) {
   final parser = SimpleInlineParser(source)..pos = start;
   final link = LinkSyntax._parseInlineLink(parser);
-  if (link != null) return (link, parser.pos + 1);
+  if (link != null) return (link: link, end: parser.pos + 1);
   return null;
 }
 
