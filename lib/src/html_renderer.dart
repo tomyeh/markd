@@ -25,6 +25,7 @@ String markdownToHtml(
   bool withDefaultInlineSyntaxes = true,
   dynamic options,
   bool checkable = false,
+  bool preserveSpace = false,
 }) {
   final document = Document(
     blockSyntaxes: blockSyntaxes,
@@ -37,6 +38,7 @@ String markdownToHtml(
     withDefaultInlineSyntaxes: withDefaultInlineSyntaxes,
     options: options,
     checkable: checkable,
+    preserveSpace: preserveSpace,
   );
 
   if (inlineOnly) return renderToHtml(document.parseInline(markdown));

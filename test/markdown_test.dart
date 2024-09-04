@@ -404,4 +404,109 @@ Bold is not Italic
 Another issue''');
       });
   });
+
+  group('markd: preserve space', () {
+    void validate(String description, String markdown, String html) {
+      validateCore(description, markdown, html,
+          blockSyntaxes: [
+            const UnorderedListWithCheckboxSyntax(),
+            const OrderedListWithCheckboxSyntax(),
+            const FencedCodeBlockSyntax(),
+            const TableSyntax()],
+          preserveSpace: true);
+    }
+    validate(
+        'Simple',
+        '''
+Line *1
+Line* 2
+
+
+Line 3
+Line 4
+''', '''
+<p>Line <em>1
+Line</em> 2
+
+
+Line 3
+Line 4</p>
+''');
+
+    validate(
+        'Empty line in front',
+        '''
+
+
+Line *1
+Line* 2
+
+
+Line 3
+Line 4
+''', '''
+<p>
+
+Line <em>1
+Line</em> 2
+
+
+Line 3
+Line 4</p>
+''');
+
+    validate(
+        'Table',
+        '''
+Line 1
+
+| a | b |
+|--|--|
+| x | y |
+
+
+Line 2
+''', '''
+<p>Line 1
+</p>
+<table>
+<thead>
+<tr>
+<th>a</th>
+<th>b</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>x</td>
+<td>y</td>
+</tr>
+</tbody>
+</table>
+<p>
+Line 2</p>
+''');
+
+    validate(
+        'List',
+        '''
+Line 1
+
+* Item 1
+* Item 2
+
+
+Line 2
+''', '''
+<p>Line 1
+</p>
+<ul>
+<li>Item 1</li>
+<li>Item 2</li>
+</ul>
+<p>
+Line 2</p>
+''');
+
+  });
 }

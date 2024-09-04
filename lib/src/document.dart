@@ -46,6 +46,8 @@ class Document {
 
   /// Whether the checkbox in the check list is checkable.
   final bool checkable;
+  /// Whether to preserve the white spaces.
+  final bool preserveSpace;
 
   Iterable<BlockSyntax> get blockSyntaxes => _blockSyntaxes;
 
@@ -68,6 +70,7 @@ class Document {
     this.withDefaultBlockSyntaxes = true,
     this.withDefaultInlineSyntaxes = true,
     this.checkable = false,
+    this.preserveSpace = false,
     this.options,
     BlockParserBuilder blockParserBuilder = BlockParser.new,
     InlineParserBuilder inlineParserBuilder = InlineParser.new,
@@ -107,6 +110,7 @@ class Document {
     this.withDefaultInlineSyntaxes = true, //useless if [InlineParser.be] used
     this.hasCustomInlineSyntaxes = false, //useless if [InlineParser.be] used
     this.checkable = false,
+    this.preserveSpace = false,
     this.options,
   });
 

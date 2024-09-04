@@ -85,6 +85,7 @@ void validateCore(
   bool inlineOnly = false,
   bool enableTagfilter = false,
   bool checkable = true,
+  bool preserveSpace = false,
 }) {
   test(description, () {
     final result = markdownToHtml(
@@ -97,6 +98,7 @@ void validateCore(
       inlineOnly: inlineOnly,
       enableTagfilter: enableTagfilter,
       checkable: checkable,
+      preserveSpace: preserveSpace,
     );
 
     markdownPrintOnFailure(markdown, html, result);
