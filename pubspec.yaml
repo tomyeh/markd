@@ -1,5 +1,5 @@
 name: markd
-version: 7.2.2+1
+version: 7.2.3
 
 description: >-
   A fork of dart-lang's markdown at https://github.com/dart-lang/markdown
@@ -23,7 +23,7 @@ dev_dependencies:
   build_version: ^2.0.3
   build_web_compilers: ^4.0.0
   collection: ^1.15.0
-  dart_flutter_team_lints: ^2.0.0
+  dart_flutter_team_lints: ^3.0.0
   html: ^0.15.0
   http: ^1.0.0
   io: ^1.0.0
@@ -31,5 +31,5 @@ dev_dependencies:
   pool: ^1.5.1
   tar: ^1.0.3
   test: ^1.16.0
-  web: '>=0.4.2 <0.6.0'
+  web: '>=0.4.2 <2.0.0'
   yaml: ^3.0.0
