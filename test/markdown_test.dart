@@ -508,5 +508,26 @@ Line 2
 Line 2</p>
 ''');
 
+    validate(
+        'Space in front of line',
+        '''
+  Line 1
+
+* Item 1
+*  Item 2
+
+
+Line 2
+''', '''
+<p>  Line 1
+</p>
+<ul>
+<li>Item 1</li>
+<li> Item 2</li>
+</ul>
+<p>
+Line 2</p>
+''');
+
   });
 }

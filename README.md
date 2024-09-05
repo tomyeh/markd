@@ -5,8 +5,8 @@
 
 * List with checkbox
   * Add the data-line attribute to indicate which line the checkbox is in the markdown.
+* Support the `preserveSpace` option to work with WYSIWYG editors easier.
 * `TableSyntax`
-  * `escapeFoward` introduced for skiping pipe characters (`|`) that shall not be considered as a column separator.
   * `processCellContent` introduced for pre-processing cell's content
 * Link enhancements:
   * `LinkMapper` introduced to allow app for mapping to *application-specific* links.
