@@ -41,23 +41,17 @@ String markdownToHtml(
     preserveSpace: preserveSpace,
   );
 
-  if (inlineOnly) {
-    return renderToHtml(document.parseInline(markdown),
-        preserveSpace: preserveSpace);
-  }
+  if (inlineOnly) return renderToHtml(document.parseInline(markdown));
 
   final nodes = document.parse(markdown);
 
-  return '${renderToHtml(nodes, enableTagfilter: enableTagfilter,
-      preserveSpace: preserveSpace)}\n';
+  return '${renderToHtml(nodes, enableTagfilter: enableTagfilter)}\n';
 }
 
 /// Renders [nodes] to HTML.
-String renderToHtml(List<Node> nodes, {bool enableTagfilter = false,
-    bool preserveSpace = false}) =>
+String renderToHtml(List<Node> nodes, {bool enableTagfilter = false}) =>
     HtmlRenderer(
       enableTagfilter: enableTagfilter,
-      preserveSpace: preserveSpace,
     ).render(nodes);
 
 const _blockTags = {
@@ -112,13 +106,10 @@ class CondensedHtmlRenderer implements NodeVisitor {
   final _elementStack = <Element>[];
   String? _lastVisitedTag;
   final bool _tagfilterEnabled;
-  final bool _spacePreserved;
 
   CondensedHtmlRenderer({
     bool enableTagfilter = false,
-    bool preserveSpace = false,
-  }) : _tagfilterEnabled = enableTagfilter,
-    _spacePreserved = preserveSpace;
+  }) : _tagfilterEnabled = enableTagfilter;
 
   String render(List<Node> nodes) {
     buffer = StringBuffer();
@@ -140,7 +131,7 @@ class CondensedHtmlRenderer implements NodeVisitor {
     }
     if (const {'br', 'p', 'li'}.contains(_lastVisitedTag)) {
       final lines = LineSplitter.split(content);
-      content = _spacePreserved || content.contains('<pre>')
+      content = !_trimLeft || content.contains('<pre>')
           ? lines.join('\n')
           : lines.map((line) => line.trimLeft()).join('\n');
       if (text.textContent.endsWith('\n')) {
@@ -172,6 +163,9 @@ class CondensedHtmlRenderer implements NodeVisitor {
       return true;
     }
   }
+
+  /// Whether to trim left if it is contained in `p` or `li`
+  bool get _trimLeft => true;
 
   void _writeOpenTagStart(Element element) {
     buffer.write('<${element.tag}');
@@ -260,7 +254,7 @@ class CondensedHtmlRenderer implements NodeVisitor {
 
 /// Translates a parsed AST to HTML.
 class HtmlRenderer extends CondensedHtmlRenderer {
-  HtmlRenderer({super.enableTagfilter = false, super.preserveSpace = false});
+  HtmlRenderer({super.enableTagfilter = false});
 
   @override
   bool _isBlockTag(String? tag)
@@ -274,8 +268,8 @@ class HtmlRenderer extends CondensedHtmlRenderer {
 ///
 /// For better, you can use just [EmptyBlockSyntax] and [ParagraphSyntax].
 class TextRenderer extends HtmlRenderer {
-  TextRenderer(): super(preserveSpace: true);
-
+  @override
+  bool get _trimLeft => false; //preserve the spaces
   @override
   void _writeOpenTagStart(Element element) {
     if (_lastVisitedTag == 'p' && buffer.isNotEmpty) buffer.writeln();
