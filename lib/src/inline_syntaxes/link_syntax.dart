@@ -21,9 +21,10 @@ typedef LinkMapper = String Function(InlineParser parser, String url);
 /// The second form can have an optional title, i.e., it is part of
 /// markdown's link.
 /// For example, to parse the link in `[foo](link "title")`, pass [start]
-/// at `(`.
-({InlineLink link, int end})? parseInlineLink(
-      String source, int start) {
+/// points at `(`.
+///
+/// The returned `end` points at the character right after `)`
+({InlineLink link, int end})? parseInlineLink(String source, int start) {
   final parser = SimpleInlineParser(source)..pos = start;
   final link = LinkSyntax._parseInlineLink(parser);
   if (link != null) return (link: link, end: parser.pos + 1);
@@ -504,4 +505,13 @@ class InlineLink {
   final String? title;
 
   InlineLink(this.destination, {this.title});
+
+  @override
+  int get hashCode => destination.hashCode;
+  @override
+  bool operator ==(Object other)
+  => other is InlineLink && other.destination == destination
+      && other.title == title;
+  //@override
+  //String toString() => '$destination $title';
 }

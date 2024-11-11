@@ -509,4 +509,21 @@ Line 2</p>
 ''');
 
   });
+
+  testUtil();
+}
+
+void testUtil() {
+  group('util', () {
+    test('parseInlineLink', () {
+      const link = 'https://link.com/go';
+      expect(parseInlineLink('[foo]($link)', 5),
+          (link: InlineLink(link), end: 5 + 2/*()*/ + link.length));
+
+      const text = '[foo]($link "nil")';
+      expect(parseInlineLink(text, 5),
+          (link: InlineLink(link, title: 'nil'),
+            end: text.lastIndexOf(')') + 1));
+    });
+  }); 
 }
