@@ -32,6 +32,7 @@
 * [Keikai](https://keikai.io) - a sophisticated spreadsheet for big data
 
 ## Introduction
+> This repo has moved to https://github.com/dart-lang/tools/tree/main/pkgs/markdown
 
 A portable Markdown library written in Dart. It can parse Markdown into
 HTML on both the client and server.
