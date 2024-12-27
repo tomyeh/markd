@@ -88,6 +88,9 @@ class BlockParser {
     this.offset = 0,
   });
 
+  ///The options passed to [document].
+  dynamic get options => document.options;
+
   /// Gets the current line.
   Line get current => lines[_pos];
 
