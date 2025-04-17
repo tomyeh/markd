@@ -61,7 +61,10 @@ abstract class ListSyntax extends BlockSyntax {
 
     // An empty list item cannot interrupt a paragraph. See
     // https://spec.commonmark.org/0.30/#example-285
-    return match[2]?.isNotEmpty ?? false;
+    return match[2]?.isNotEmpty
+        ?? parser.ignore?.call(this, parser.pos - 1) ?? false;
+        //If line[pos-1] was ignored, return true to avoid [ParagraphSyntax]
+        //or others from merging the following line, line[pos], (#22147)
   }
 
   const ListSyntax();
@@ -255,13 +258,14 @@ abstract class ListSyntax extends BlockSyntax {
     endItem();
     final itemNodes = <Element>[];
 
-    items.forEach(_removeLeadingEmptyLine);
     final anyEmptyLines = _removeTrailingEmptyLines(items);
     var anyEmptyLinesBetweenBlocks = false;
     var containsTaskList = false;
     const taskListClass = 'task-list-item';
 
     for (final item in items) {
+      final firstLineRemoved = _removeLeadingEmptyLine(item) != null;
+
       Element? checkboxToInsert;
       if (item.taskListItemState != null) {
         containsTaskList = true;
@@ -279,6 +283,12 @@ abstract class ListSyntax extends BlockSyntax {
 
       final itemParser = parser.document.getBlockParser(item.lines,
           offset: item.offset);
+      if (!firstLineRemoved) {
+        //Don't set up [ignore] if the first line removed (#22147)
+        itemParser.ignore = (syntax, pos) => pos == 0
+            && ignoreSyntaxAtFirstLine(itemParser, syntax);
+      }
+
       final children = itemParser.parseLines(parentSyntax: this);
       final itemElement = checkboxToInsert == null
           ? Element('li', children)
@@ -343,10 +353,11 @@ abstract class ListSyntax extends BlockSyntax {
     return [checkbox, ...children];
   }
 
-  void _removeLeadingEmptyLine(ListItem item) {
+  Line? _removeLeadingEmptyLine(ListItem item) {
     if (item.lines.isNotEmpty && item.lines.first.isBlankLine) {
-      item.lines.removeAt(0);
+      return item.lines.removeAt(0);
     }
+    return null;
   }
 
   /// Removes any trailing empty lines and notes whether any items are separated
@@ -354,14 +365,32 @@ abstract class ListSyntax extends BlockSyntax {
   bool _removeTrailingEmptyLines(List<ListItem> items) {
     var anyEmpty = false;
     for (var i = 0; i < items.length; i++) {
-      if (items[i].lines.length == 1) continue;
-      while (items[i].lines.isNotEmpty && items[i].lines.last.isBlankLine) {
-        if (i < items.length - 1) {
-          anyEmpty = true;
+      final removed = _removeLeadingEmptyLine(items[i]);
+
+      if (items[i].lines.length != 1) {
+        while (items[i].lines.isNotEmpty && items[i].lines.last.isBlankLine) {
+          if (i < items.length - 1) {
+            anyEmpty = true;
+          }
+          items[i].lines.removeLast();
         }
-        items[i].lines.removeLast();
       }
+
+      if (removed != null) items[i].lines.insert(0, removed);
     }
     return anyEmpty;
   }
+
+  /// Whether not to parse the first line of each list item
+  /// for the given [syntax].
+  ///
+  /// If false (default), [ListSyntax]'ll parse the first line
+  /// recursively.
+  /// For example, `- - A` will be interpreted as a nested list.
+  ///
+  /// You can implement it as follows so the above markdown
+  /// will be parsed as a list item with the content as "- A":
+  /// `=> parser.parentSyntax is ListSyntax && syntax is ListSyntax`
+  bool ignoreSyntaxAtFirstLine(BlockParser parser, BlockSyntax syntax)
+  => false;
 }

@@ -1,3 +1,7 @@
+## 7.2.3+3
+
+* `BlockParser.ignore()` and `ListSyntax.ignoreSyntaxAtFirstLine` introduced for customizing the parsing of block syntaxes.
+
 ## 7.2.3+1
 
 * Fix several `RangeError` hazards in links (#623).

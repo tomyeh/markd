@@ -57,6 +57,9 @@ class BlockParser {
   /// Whether the parser has encountered a blank line between two block-level
   /// elements.
   bool encounteredBlankLine = false;
+  /// If specified, it'll be called to check whether to ignore
+  /// the given [syntax] when parsing the line at specified [pos].
+  bool Function(BlockSyntax syntax, int pos)? ignore;
 
   /// The collection of built-in block parsers.
   static const List<BlockSyntax> standardBlockSyntaxes = [
@@ -182,7 +185,7 @@ class BlockParser {
     while (!isDone) {
       final positionBefore = _pos;
       for (final syntax in blockSyntaxes) {
-        if (neverMatch == syntax) {
+        if (neverMatch == syntax || (ignore?.call(syntax, _pos) ?? false)) {
           continue;
         }
 
