@@ -1,3 +1,7 @@
+## 7.2.3+4
+
+* `ListSyntax.dashListClass` and `ListSyntax.squareListClass` added for dash (`-`) and square (`+`) style list.
+
 ## 7.2.3+3
 
 * `BlockParser.ignore()` and `ListSyntax.ignoreSyntaxAtFirstLine` introduced for customizing the parsing of block syntaxes.

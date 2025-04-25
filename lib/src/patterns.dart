@@ -45,7 +45,7 @@ final hrPattern = RegExp(r'^ {0,3}([-*_])[ \t]*\1[ \t]*\1(?:\1|[ \t])*$');
 /// A line starting with a number like `123.`. May have up to three leading
 /// spaces before the marker and any number of spaces or tabs after.
 final listPattern =
-    RegExp(r'^[ ]{0,3}(?:(\d{1,9})[\.)]|[*+-])(?:[ \t]+(.*))?$');
+    RegExp(r'^[ ]{0,3}(?:(\d{1,9})[\.)]|([*+-]))(?:[ \t]+(.*))?$');
 
 /// A line of hyphens separated by at least one pipe.
 final tablePattern = RegExp(

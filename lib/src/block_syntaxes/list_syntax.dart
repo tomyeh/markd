@@ -61,7 +61,7 @@ abstract class ListSyntax extends BlockSyntax {
 
     // An empty list item cannot interrupt a paragraph. See
     // https://spec.commonmark.org/0.30/#example-285
-    return match[2]?.isNotEmpty
+    return match[3]?.isNotEmpty
         ?? parser.ignore?.call(this, parser.pos - 1) ?? false;
         //If line[pos-1] was ignored, return true to avoid [ParagraphSyntax]
         //or others from merging the following line, line[pos], (#22147)
@@ -82,6 +82,8 @@ abstract class ListSyntax extends BlockSyntax {
   Node parse(BlockParser parser) {
     final match = pattern.firstMatch(parser.current.content);
     final ordered = match![1] != null;
+    final dashStyle = match[2] == '-';
+    final squareStyle = match[2] == '+';
 
     final taskListParserEnabled = this is UnorderedListWithCheckboxSyntax ||
         this is OrderedListWithCheckboxSyntax;
@@ -292,8 +294,16 @@ abstract class ListSyntax extends BlockSyntax {
       final children = itemParser.parseLines(parentSyntax: this);
       final itemElement = checkboxToInsert == null
           ? Element('li', children)
-          : (Element('li', _addCheckbox(children, checkboxToInsert))
-            ..attributes['class'] = taskListClass);
+          : Element('li', _addCheckbox(children, checkboxToInsert));
+      var itemClass = dashStyle ? dashListClass:
+          squareStyle ? squareListClass: null;
+      if (checkboxToInsert != null) {
+        itemClass = itemClass != null ?
+            '$taskListClass $itemClass': taskListClass;
+      }
+      if (itemClass != null) {
+        itemElement.attributes['class'] = itemClass;
+      }
 
       itemNodes.add(itemElement);
       anyEmptyLinesBetweenBlocks =
@@ -308,7 +318,8 @@ abstract class ListSyntax extends BlockSyntax {
       // We must post-process the list items, converting any top-level paragraph
       // elements to just text elements.
       for (final item in itemNodes) {
-        final isTaskList = item.attributes['class'] == taskListClass;
+        final isTaskList = item.attributes['class']?.contains(taskListClass)
+            ?? false;
         final children = item.children;
         if (children != null) {
           Node? lastNode;
@@ -380,6 +391,15 @@ abstract class ListSyntax extends BlockSyntax {
     }
     return anyEmpty;
   }
+
+  /// Returns the CSS class for dash style list, or null if no special
+  /// class (default).
+  String? get dashListClass => null;
+  /// Returns the CSS class for square style list, or null if no special
+  /// class (default).
+  ///
+  /// Used for `+ item`
+  String? get squareListClass => null;
 
   /// Whether not to parse the first line of each list item
   /// for the given [syntax].
