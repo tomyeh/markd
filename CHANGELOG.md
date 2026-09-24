@@ -1,6 +1,15 @@
-## 7.2.4
+## 7.3.0
 
+* `AutolinkExtensionSyntax.emailPattern` is now public.
 * Fix a `RangeError` parsing a link reference definition whose label, destination or title ends in a backslash.
+* Ported from [dart-lang/tools](https://github.com/dart-lang/tools/tree/main/pkgs/markdown):
+  * Fix quadratic parsing time on a long unbroken run of word characters ending a line (dart-lang/tools#2536).
+  * Fix performance and correctness of the HTML comment parser; processing instructions, declarations and CDATA sections may span lines, and tag names accept uppercase letters (dart-lang/tools#2121).
+  * Fix an issue with nested list structure when indented by tabs (dart-lang/tools#2173).
+  * Escape image description text when assigning it to the `alt` attribute (dart-lang/tools#2478).
+  * `markdownToHtml` respects `enableTagfilter` when `inlineOnly` is true, and the tag filter covers tags with attributes, spaces, self-closing and closing tags (dart-lang/tools#2471, dart-lang/tools#2472).
+  * Bound the email regex quantifiers in `AutolinkExtensionSyntax` (dart-lang/tools#2474).
+  * `ExtensionSet.gitHubFlavored` parses a lone `-` (or `=`) line continuing a paragraph as a setext heading underline, not an empty list item (dart-lang/tools#2510).
 
 ## 7.2.3+4
 

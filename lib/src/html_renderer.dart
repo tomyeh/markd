@@ -41,7 +41,12 @@ String markdownToHtml(
     preserveSpace: preserveSpace,
   );
 
-  if (inlineOnly) return renderToHtml(document.parseInline(markdown));
+  if (inlineOnly) {
+    return renderToHtml(
+      document.parseInline(markdown),
+      enableTagfilter: enableTagfilter,
+    );
+  }
 
   final nodes = document.parse(markdown);
 
@@ -231,19 +236,20 @@ class CondensedHtmlRenderer implements NodeVisitor {
     return suffixedId;
   }
 
+  static final _tagfilterPattern = RegExp(
+    '<(?=/?(?:'
+    'title|textarea|style|xmp|iframe|noembed|noframes|script|plaintext'
+    r')(?:\s|/|>))',
+    caseSensitive: false,
+    multiLine: true,
+  );
+
   /// Filters some particular tags, see:
   /// https://github.github.com/gfm/#disallowed-raw-html-extension-
   // As said in the specification, this process should happen when rendering
   // HTML output, so there should not be a dedicated syntax for this extension.
-  String _filterTags(String content) => content.replaceAll(
-      RegExp(
-        '<(?=(?:'
-        'title|textarea|style|xmp|iframe|noembed|noframes|script|plaintext'
-        ')>)',
-        caseSensitive: false,
-        multiLine: true,
-      ),
-      '&lt;');
+  String _filterTags(String content) =>
+      content.replaceAll(_tagfilterPattern, '&lt;');
 
   bool _isBlockTag(String? tag) => _blockTags.contains(tag);
   /// Whether there shall be line-break before rendering [tag]

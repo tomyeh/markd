@@ -41,14 +41,16 @@ class AutolinkExtensionSyntax extends InlineSyntax {
       // '(?<![?!.,:*_~])'
       r'[^\s<?!.,:*_~]';
 
-  // An extended email autolink, see
-  // https://github.github.com/gfm/#extended-email-autolink.
-  static const _emailPattern =
-      r'[-_.+a-z0-9]+@(?:[-_a-z0-9]+\.)+[-_a-z0-9]*[a-z0-9]';
+  /// An extended email autolink, see
+  /// https://github.github.com/gfm/#extended-email-autolink.
+  ///
+  /// It is written for a case-insensitive [RegExp].
+  static const emailPattern =
+      r'[-_.+a-z0-9]{1,64}@(?:[-_a-z0-9]{1,63}\.)+[-_a-z0-9]{0,63}[a-z0-9]';
 
   AutolinkExtensionSyntax()
       : super(
-          '($_linkPattern)|($_emailPattern)',
+          '($_linkPattern)|($emailPattern)',
           caseSensitive: false,
         );
 
