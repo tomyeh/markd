@@ -98,3 +98,21 @@ bar][].
 <<<
 <p>Text <a href="http://bar.com">foo
 bar</a>.</p>
+>>> a label ending in a backslash is not a reference definition
+[foo\
+<<<
+<p>[foo\</p>
+>>> a bracketed destination ending in a backslash is not a reference definition
+[a]: <b\
+<<<
+<p>[a]: &lt;b\</p>
+>>> a bare destination can end in a backslash
+[a]
+
+[a]: b\
+<<<
+<p><a href="b%5C">a</a></p>
+>>> a title ending in a backslash is not a title
+[a]: b "t\
+<<<
+<p>[a]: b &quot;t\</p>

@@ -1,3 +1,7 @@
+## 7.2.4
+
+* Fix a `RangeError` parsing a link reference definition whose label, destination or title ends in a backslash.
+
 ## 7.2.3+4
 
 * `ListSyntax.dashListClass` and `ListSyntax.squareListClass` added for dash (`-`) and square (`+`) style list.
