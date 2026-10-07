@@ -376,3 +376,163 @@ baz | bim
 </tr>
 </tbody>
 </table>
+>>> delimiter row with a stray character is not a table
+head | cells
+-----|-----.
+body | cells
+
+<<<
+<p>head | cells
+-----|-----.
+body | cells</p>
+>>> delimiter row with a stray character in the middle
+head | cells | more
+---- | -x-- | ----
+body | cells | more
+<<<
+<p>head | cells | more
+---- | -x-- | ----
+body | cells | more</p>
+>>> delimiter row with a cell without hyphens
+head | cells | more
+---- |      | ----
+body | cells | more
+<<<
+<p>head | cells | more
+---- |      | ----
+body | cells | more</p>
+>>> delimiter row with a cell of only a colon
+head | cells
+:    | ----
+body | cells
+<<<
+<p>head | cells
+:    | ----
+body | cells</p>
+>>> delimiter row with a stray character before the first cell
+head | cells
+x--- | ----
+body | cells
+<<<
+<p>head | cells
+x--- | ----
+body | cells</p>
+>>> delimiter row with a stray character after trailing whitespace
+head | cells
+---- | ---- .
+body | cells
+<<<
+<p>head | cells
+---- | ---- .
+body | cells</p>
+>>> delimiter row with a stray character after the trailing pipe
+| head | cells |
+| ---- | ---- | x
+| body | cells |
+<<<
+<p>| head | cells |
+| ---- | ---- | x
+| body | cells |</p>
+>>> delimiter row indented three spaces
+head | cells
+   ---- | ----
+body | cells
+<<<
+<table>
+<thead>
+<tr>
+<th>head</th>
+<th>cells</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>body</td>
+<td>cells</td>
+</tr>
+</tbody>
+</table>
+>>> delimiter row with trailing spaces and a tab, no trailing pipe
+head | cells
+---- | ---- 	
+body | cells
+<<<
+<table>
+<thead>
+<tr>
+<th>head</th>
+<th>cells</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>body</td>
+<td>cells</td>
+</tr>
+</tbody>
+</table>
+>>> delimiter row with tabs and spaces around alignment colons
+| head | cells | more |
+| 	:---	 | 	:---:	 | 	---:	 |
+| body | cells | more |
+<<<
+<table>
+<thead>
+<tr>
+<th align="left">head</th>
+<th align="center">cells</th>
+<th align="right">more</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">body</td>
+<td align="center">cells</td>
+<td align="right">more</td>
+</tr>
+</tbody>
+</table>
+>>> one column delimiter row, indented, with trailing whitespace
+head
+  -----|  
+body
+<<<
+<table>
+<thead>
+<tr>
+<th>head</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>body</td>
+</tr>
+</tbody>
+</table>
+>>> padded wide delimiter row
+| a | b | c | d | e | f |
+|    ---    |    ---    |    ---    |    ---    |    ---    |    ---    |
+| 1 | 2 | 3 | 4 | 5 | 6 |
+<<<
+<table>
+<thead>
+<tr>
+<th>a</th>
+<th>b</th>
+<th>c</th>
+<th>d</th>
+<th>e</th>
+<th>f</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>2</td>
+<td>3</td>
+<td>4</td>
+<td>5</td>
+<td>6</td>
+</tr>
+</tbody>
+</table>

@@ -1,3 +1,7 @@
+## 7.3.1
+
+* Fix exponential matching time of `tablePattern` on a line that almost matches a table delimiter row (a 12-column row with a stray character at the end took 40 seconds).
+
 ## 7.3.0
 
 * `AutolinkExtensionSyntax.emailPattern` is now public.

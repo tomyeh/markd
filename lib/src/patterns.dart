@@ -48,8 +48,11 @@ final listPattern =
     RegExp(r'^[ ]{0,3}(?:(\d{1,9})[\.)]|([*+-]))(?:[ \t]+(.*))?$');
 
 /// A line of hyphens separated by at least one pipe.
+///
+/// Each repetition ends at its `|`, so a line that almost matches (such as a
+/// delimiter row with a stray character at the end) fails in linear time.
 final tablePattern = RegExp(
-    r'^[ ]{0,3}\|?([ \t]*:?\-+:?[ \t]*\|[ \t]*)+([ \t]|[ \t]*:?\-+:?[ \t]*)?$');
+    r'^[ ]{0,3}\|?([ \t]*:?\-+:?[ \t]*\|)+([ \t]*:?\-+:?)?[ \t]*$');
 
 /// A line starting with `[^` and contains with `]:`, but without special chars
 /// (`\] \r\n\x00\t`) between. Same as [GFM](cmark-gfm/src/scanners.re:318).

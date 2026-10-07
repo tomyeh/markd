@@ -80,4 +80,35 @@ a <!--
     expect(html, isNotNull); // To use the output.
     expect(time.elapsedMilliseconds, lessThan(10000));
   });
+
+  test('table delimiter row that almost matches does not take exponential time',
+      () {
+    // Adjacent `[ \t]*` quantifiers in `tablePattern` let the engine try every
+    // split of each whitespace run when the row failed to match, so a padded
+    // 12-column delimiter row with a stray character at the end took 40
+    // seconds. It should now be effectively instant, and remain a paragraph.
+    final input = 'a | b\n${'|    ---    ' * 12}|.\n';
+
+    final time = Stopwatch()..start();
+    final html =
+        markdownToHtml(input, extensionSet: ExtensionSet.gitHubFlavored);
+    expect(html, '<p>a | b\n${'|    ---    ' * 12}|.</p>\n');
+    expect(time.elapsedMilliseconds, lessThan(10000));
+  });
+
+  test('other table delimiter rows that almost match are linear too', () {
+    for (final line in [
+      '${'|\t\t---\t\t' * 12}|x',
+      '${'|    ---    ' * 6}| --x-- ${'|    ---    ' * 6}|',
+      '${'| :---: ' * 12}|.',
+      '|${'-' * 2000}x|',
+      '${'|    ---    ' * 30}|.',
+    ]) {
+      final time = Stopwatch()..start();
+      final html = markdownToHtml('a | b\n$line\n',
+          extensionSet: ExtensionSet.gitHubFlavored);
+      expect(html, '<p>a | b\n$line</p>\n');
+      expect(time.elapsedMilliseconds, lessThan(10000), reason: line);
+    }
+  });
 }
