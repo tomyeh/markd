@@ -18,11 +18,17 @@ class ListItem {
     this.lines, {
     this.taskListItemState,
     this.offset = 0,
+    this.taskListItemOffset,
   });
 
   final List<Line> lines;
   final TaskListItemState? taskListItemState;
   final int offset;
+
+  /// The line of the task list item's marker (`[ ]` or `[x]`), if any.
+  /// It differs from [offset] if the item starts with an empty line.
+  /// Default: [offset].
+  final int? taskListItemOffset;
 }
 
 enum TaskListItemState { checked, unchecked }
@@ -90,12 +96,15 @@ abstract class ListSyntax extends BlockSyntax {
     final items = <ListItem>[];
     var childLines = <Line>[];
     TaskListItemState? taskListItemState;
+    int? taskListItemOffset; //the line of the task list item's marker
     var offset = 0; //offset of the first line of [childLines]
 
     void endItem() {
       if (childLines.isNotEmpty) {
         items.add(ListItem(childLines, taskListItemState: taskListItemState,
-            offset: offset + parser.offset));
+            offset: offset + parser.offset,
+            taskListItemOffset: taskListItemOffset == null ? null:
+                taskListItemOffset! + parser.offset));
         childLines = <Line>[];
       }
     }
@@ -108,6 +117,7 @@ abstract class ListSyntax extends BlockSyntax {
       final pattern = RegExp(r'^ {0,3}\[([ xX])\][ \t]');
 
       if (taskListParserEnabled && pattern.hasMatch(text)) {
+        taskListItemOffset = parser.pos;
         return text.replaceFirstMapped(pattern, (match) {
           taskListItemState = match[1] == ' '
               ? TaskListItemState.unchecked
@@ -117,6 +127,7 @@ abstract class ListSyntax extends BlockSyntax {
         });
       } else {
         taskListItemState = null;
+        taskListItemOffset = null;
         return text;
       }
     }
@@ -160,6 +171,9 @@ abstract class ListSyntax extends BlockSyntax {
               : parseTaskListItem(indentedLine.text),
           tabRemaining: indentedLine.tabRemaining,
         ));
+        // The item's content has begun: the task list marker and the limit of
+        // leading blank lines above apply only to its first line.
+        blankLines = null;
       } else if (tryMatch(hrPattern)) {
         // Horizontal rule takes precedence to a new list item.
         break;
@@ -230,6 +244,7 @@ abstract class ListSyntax extends BlockSyntax {
         }
 
         taskListItemState = null;
+        taskListItemOffset = null;
         var content = contentBlockStart != null && !isBlank
             ? parseTaskListItem(textParser.substring(contentBlockStart))
             : '';
@@ -276,7 +291,8 @@ abstract class ListSyntax extends BlockSyntax {
         checkboxToInsert = Element.withTag('input')
           ..attributes['type'] = 'checkbox';
         if (parser.document.checkable) {
-          checkboxToInsert.attributes['data-line'] = '${item.offset}';
+          checkboxToInsert.attributes['data-line'] =
+              '${item.taskListItemOffset ?? item.offset}';
         } else {
           checkboxToInsert.attributes['disabled'] = 'disabled';
         }
@@ -286,7 +302,7 @@ abstract class ListSyntax extends BlockSyntax {
       }
 
       final itemParser = parser.document.getBlockParser(item.lines,
-          offset: item.offset);
+          offset: firstLineRemoved ? item.offset + 1: item.offset);
       if (!firstLineRemoved) {
         //Don't set up [ignore] if the first line removed (#22147)
         itemParser.ignore = (syntax, pos) => pos == 0

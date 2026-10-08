@@ -172,6 +172,17 @@ class BlockParser {
     _parentSyntax = parentSyntax;
     _setextHeadingDisabled = disabledSetextHeading;
 
+    if (_nestingLevel >= maxNestingLevel) return _parseAsParagraph();
+
+    ++_nestingLevel;
+    try {
+      return _parseLines();
+    } finally {
+      --_nestingLevel;
+    }
+  }
+
+  List<Node> _parseLines() {
     final blocks = <Node>[];
 
     // If the `_pos` does not change before and after `parse()`, never try to
@@ -179,13 +190,16 @@ class BlockParser {
     // For example the `TableSyntax` might not advance the `_pos` in `parse`
     // method, beause of the header row does not match the delimiter row in the
     // number of cells, which makes a table like structure not be recognized.
-    BlockSyntax? neverMatch;
+    // It is a set since more than one syntax can fail at the same line, such
+    // as `TableSyntax` and then `LinkReferenceDefinitionSyntax` at `[a] | b`.
+    final neverMatch = <BlockSyntax>{};
 
     var iterationsWithoutProgress = 0;
     while (!isDone) {
       final positionBefore = _pos;
       for (final syntax in blockSyntaxes) {
-        if (neverMatch == syntax || (ignore?.call(syntax, _pos) ?? false)) {
+        if (neverMatch.contains(syntax)
+        || (ignore?.call(syntax, _pos) ?? false)) {
           continue;
         }
 
@@ -196,7 +210,11 @@ class BlockParser {
           if (block != null) {
             blocks.add(block);
           }
-          neverMatch = _pos != positionBefore ? null : syntax;
+          if (_pos != positionBefore) {
+            neverMatch.clear();
+          } else {
+            neverMatch.add(syntax);
+          }
 
           if (block != null ||
               syntax is EmptyBlockSyntax ||
@@ -216,8 +234,9 @@ class BlockParser {
       // combine existing ones, it is hard to promise that no combination can't
       // trigger an infinite loop
       if (positionBefore == _pos) {
-        iterationsWithoutProgress++;
-        if (iterationsWithoutProgress > 2) {
+        // Each iteration without progress excludes one more syntax at this
+        // line, so the syntaxes run out unless one keeps not advancing.
+        if (++iterationsWithoutProgress > blockSyntaxes.length) {
           // If this happens we throw an error to avoid having the parser
           // running in an infinite loop. An error is easier to handle.
           // If you see this error in production please file a bug!
@@ -230,4 +249,21 @@ class BlockParser {
 
     return blocks;
   }
+
+  /// Parses the remaining lines as a paragraph.
+  /// It is used when the blocks are nested too deeply ([maxNestingLevel]).
+  List<Node> _parseAsParagraph() {
+    final content = lines.getRange(_pos, lines.length)
+        .map((line) => line.content).join('\n').trimRight();
+    _pos = lines.length;
+    return [if (content.isNotEmpty) Element('p', [UnparsedContent(content)])];
+  }
+
+  /// The maximal levels of nested blocks, such as blockquotes and lists.
+  /// The lines nested deeper are parsed as a paragraph, so a deeply nested
+  /// input (such as 10,000 `>`) won't overflow the stack.
+  static const maxNestingLevel = 32;
 }
+
+/// The number of [BlockParser.parseLines] running (i.e., on the stack).
+var _nestingLevel = 0;

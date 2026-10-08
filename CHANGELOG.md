@@ -1,3 +1,10 @@
+## 7.3.2
+
+* Fix `BlockParser.parseLines is not advancing` thrown when more than one block syntax fails to parse the same line, such as `[a] | b` followed by `|-|`.
+* Fix a stack overflow on deeply nested blocks (such as 10,000 `>`): blocks nested deeper than `BlockParser.maxNestingLevel` (32) are parsed as a paragraph.
+* Fix a list item that starts with an empty line: the task list marker is recognized only on its first line (a later `[ ]` overwrote or cleared its state), and a blank line between its paragraphs no longer ends the item.
+* Fix the `data-line` of the checkboxes in a list item that starts with an empty line (it was off by one). `ListItem.taskListItemOffset` added.
+
 ## 7.3.1
 
 * Fix exponential matching time of `tablePattern` on a line that almost matches a table delimiter row (a 12-column row with a stray character at the end took 40 seconds).

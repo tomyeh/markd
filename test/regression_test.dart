@@ -111,4 +111,88 @@ a <!--
       expect(time.elapsedMilliseconds, lessThan(10000), reason: line);
     }
   });
+
+  test('a line that more than one block syntax fails to parse', () {
+    // `parseLines` remembered only the last syntax that didn't advance, so
+    // `TableSyntax` and `LinkReferenceDefinitionSyntax` took turns failing at
+    // the same line until it threw "BlockParser.parseLines is not advancing".
+    final gfm = ExtensionSet.gitHubFlavored;
+    expect(markdownToHtml('[a] | b\n|-|', extensionSet: gfm),
+        '<p>[a] | b\n|-|</p>\n');
+    expect(markdownToHtml('[|:\n-|', extensionSet: gfm),
+        '<p>[|:\n-|</p>\n');
+    expect(markdownToHtml('[a]: b | c\n|-|', extensionSet: gfm),
+        '<p>[a]: b | c\n|-|</p>\n');
+    expect(markdownToHtml('- [a] | b\n  |-|', extensionSet: gfm),
+        '<ul>\n<li>[a] | b\n|-|</li>\n</ul>\n');
+  });
+
+  test('deeply nested blocks do not overflow the stack', () {
+    // Each nested blockquote or list item parsed its lines recursively, so
+    // 10,000 `>` overflowed the stack. Lines nested deeper than
+    // `BlockParser.maxNestingLevel` (32) are parsed as a paragraph.
+    expect(markdownToHtml('${'>' * 32}x'),
+        '${'<blockquote>\n' * 32}<p>x</p>\n${'</blockquote>\n' * 32}');
+    expect(markdownToHtml('${'>' * 33}x'),
+        '${'<blockquote>\n' * 32}<p>&gt;x</p>\n${'</blockquote>\n' * 32}');
+    expect(markdownToHtml('${'>' * 10000}x'),
+        '${'<blockquote>\n' * 32}<p>${'&gt;' * 9968}x</p>\n'
+        '${'</blockquote>\n' * 32}');
+    expect(markdownToHtml('${'- ' * 5000}x'),
+        '${'<ul>\n<li>\n' * 31}<ul>\n<li>${'- ' * 4968}x</li>\n</ul>\n'
+        '${'</li>\n</ul>\n' * 31}');
+  });
+
+  test('list item that starts with an empty line', () {
+    // The counter of leading blank lines wasn't reset once the item's content
+    // began, so every line was parsed for a task list marker (overwriting or
+    // clearing the first one's state), and a blank line between the item's
+    // paragraphs ended the item.
+    final gfm = ExtensionSet.gitHubFlavored;
+    expect(markdownToHtml('-\n  [x] foo\n  [ ] bar', extensionSet: gfm), '''
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" disabled="disabled" checked="true"></input>foo
+[ ] bar</li>
+</ul>
+''');
+    expect(markdownToHtml('-\n  [ ] foo\n  bar', extensionSet: gfm), '''
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" disabled="disabled"></input>foo
+bar</li>
+</ul>
+''');
+    expect(markdownToHtml('-\n  foo\n\n  bar'), '''
+<ul>
+<li>
+<p>foo</p>
+<p>bar</p>
+</li>
+</ul>
+''');
+  });
+
+  test('data-line of a task list item after an empty first line', () {
+    // The item's children were parsed with the offset of the dropped empty
+    // line, so their `data-line` was off by one.
+    String render(String markdown) => HtmlRenderer().render(
+        Document(extensionSet: ExtensionSet.gitHubFlavored, checkable: true)
+            .parseLines(markdown.split('\n')));
+    expect(render('-\n  - [ ] a\n  - [ ] b'), '''
+<ul>
+<li>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" data-line="1"></input>a</li>
+<li class="task-list-item"><input type="checkbox" data-line="2"></input>b</li>
+</ul>
+</li>
+</ul>''');
+    expect(render('-\n  [x] foo'), '''
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" data-line="1" checked="true"></input>foo</li>
+</ul>''');
+    expect(render('- [ ] \n  foo'), '''
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" data-line="0"></input>foo</li>
+</ul>''');
+  });
 }
